@@ -335,7 +335,7 @@ class File(object):
                 self.parent.create()
             with open(self._filename, "ab") as output_file:
                 for c in content:
-                    if isinstance(c, str):
+                    if not isinstance(c, text):
                         Log.error(u"expecting to write unicode only")
 
                     output_file.write(c.encode("utf8"))

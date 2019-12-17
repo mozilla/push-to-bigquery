@@ -21,7 +21,7 @@ from jx_base.query import QueryOp
 from jx_python import jx
 from jx_sqlite import GUID, sql_aggs, unique_name, untyped_column
 from jx_sqlite.base_table import BaseTable
-from jx_sqlite.expressions import SQLang
+from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.groupby_table import GroupbyTable
 from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import Data, Null, coalesce, concat_field, is_list, listwrap, relative_field, startswith_field, unwrap, \

@@ -14,9 +14,10 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base import Column
 from jx_base.language import is_op
 from jx_base.queries import get_property_name
-from jx_sqlite import COLUMN, ColumnMapping, ORDER, _make_column_name, get_column, UID
-from jx_sqlite.expressions import BooleanOp
-from jx_sqlite.expressions import LeavesOp, SQLang, sql_type_to_json_type
+from jx_sqlite import COLUMN, ColumnMapping, ORDER, _make_column_name, get_column, UID, PARENT
+from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
+from jx_sqlite.expressions.boolean_op import BooleanOp
+from jx_sqlite.expressions.leaves_op import LeavesOp
 from jx_sqlite.insert_table import InsertTable
 from mo_dots import Data, Null, concat_field, is_list, listwrap, literal_field, startswith_field, unwrap, unwraplist, \
     exists
@@ -24,9 +25,9 @@ from mo_future import text, unichr
 from mo_json import IS_NULL, STRUCT
 from mo_math import UNION
 from mo_times import Date
-from pyLibrary.sql import SQL_AND, SQL_FROM, SQL_IS_NOT_NULL, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, \
+from pyLibrary.sql import SQL_AND, SQL_FROM, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, \
     SQL_ORDERBY, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_iso, sql_list, ConcatSQL, SQL_STAR
-from pyLibrary.sql.sqlite import quote_column, quote_value, json_type_to_sqlite_type, sql_alias
+from pyLibrary.sql.sqlite import quote_column, quote_value, sql_alias
 
 
 class SetOpTable(InsertTable):
