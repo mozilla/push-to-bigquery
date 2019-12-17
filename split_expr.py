@@ -1,8 +1,8 @@
 from mo_files import File
 from mo_logs import strings, Log
 
-base = "vendor/jx_sqlite/expressions"
-import_prefix = "from jx_sqlite.expressions."
+base = "vendor/jx_elasticsearch/es52//expressions"
+import_prefix = "from jx_elasticseach.es52.expressions."
 
 def main():
     lines = list(File(base + ".py").read_lines())
@@ -15,16 +15,19 @@ def main():
         )
     )
     imports = lines[:eoi]
-    imports.append(import_prefix+"_utils import json_type_to_sql_type, SQLang, check")
+    # imports.append("from jx_python.expressions._utils import  assign_and_eval, Python, _binaryop_to_python")
 
     # FIND ALL NEW IMPORTS
+    init_imports = []
     curr = eoi + 1
     while curr < len(lines):
         curr_line = lines[curr]
         if curr_line.startswith("class "):
             classname = strings.between(curr_line, "class ", "(")
             filename = class_to_file(classname)
-            imports.append(import_prefix+filename+" import "+classname)
+            import_ = import_prefix+filename+" import "+classname
+            imports.append(import_)
+            init_imports.append(import_)
         curr += 1
 
     # MAKE ALL NEW FILES
@@ -33,14 +36,15 @@ def main():
     while curr < len(lines):
         curr_line = lines[curr]
         if curr_line.startswith("class "):
-            filename = class_to_file(strings.between(curr_line, "class ", "("))
+            classname=strings.between(curr_line, "class ", "(")
+            filename = class_to_file(classname)
             end = curr + 1
             while not lines[end].strip() or lines[end].startswith("    "):
                 end += 1
             file = File(base) / (filename + ".py")
             file.delete()
             file.extend(
-                imports + [""] + lines[curr:end]
+                [i for i in imports if not i.endswith(classname)] + [""] + lines[curr:end]
             )
             curr = end
         else:
@@ -49,6 +53,9 @@ def main():
     file = File(base) / "_utils.py"
     file.delete()
     file.extend(imports + residue)
+    file = File(base) / "__init__.py"
+    file.delete()
+    file.extend(init_imports)
 
 
 def class_to_file(classname):
