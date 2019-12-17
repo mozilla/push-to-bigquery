@@ -1,0 +1,7 @@
+{
+    "bigquery": {"$ref": "file:///e:/moz-fx-dev-ekyle-treeherder-a838a7718652.json"},
+    "constants": {},
+    "debug": {
+        "trace": true
+    }
+}
