@@ -1,4 +1,4 @@
-from jx_base.expressions._utils import simplified, extend, jx_expression
+from jx_base.expressions._utils import simplified, extend, jx_expression, is_literal, merge_types
 from jx_base.expressions.abs_op import AbsOp
 from jx_base.expressions.add_op import AddOp
 from jx_base.expressions.and_op import AndOp
@@ -84,3 +84,5 @@ from jx_base.expressions.unix_op import UnixOp
 from jx_base.expressions.variable import Variable
 from jx_base.expressions.when_op import WhenOp
 from jx_base.language import define_language
+
+

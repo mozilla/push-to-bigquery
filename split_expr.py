@@ -1,8 +1,8 @@
 from mo_files import File
 from mo_logs import strings, Log
 
-base = "vendor/jx_elasticsearch/es52//expressions"
-import_prefix = "from jx_elasticseach.es52.expressions."
+base = "vendor/jx_elasticsearch/es52/painless"
+import_prefix = "from jx_elasticsearch.es52.painless."
 
 def main():
     lines = list(File(base + ".py").read_lines())
@@ -15,6 +15,11 @@ def main():
         )
     )
     imports = lines[:eoi]
+    imports.append("from jx_elasticsearch.es52.painless._utils import Painless, empty_string_script, false_script, _basic_binary_op_to_es_script, _count_template, _inequality_to_es_script,_binary_to_es_script")
+
+    # imports.append("from jx_elasticsearch.es52.expressions import Painless, false_script, _inequality_to_esfilter")
+    # imports.append("from jx_elasticsearch.es52.expressions._utils import ES52")
+
     # imports.append("from jx_python.expressions._utils import  assign_and_eval, Python, _binaryop_to_python")
 
     # FIND ALL NEW IMPORTS

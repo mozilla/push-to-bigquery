@@ -1,4 +1,4 @@
-from jx_python.expressions._utils import jx_expression_to_function
+from jx_python.expressions._utils import jx_expression_to_function, Python
 from jx_python.expressions.add_op import AddOp
 from jx_python.expressions.and_op import AndOp
 from jx_python.expressions.basic_eq_op import BasicEqOp
@@ -56,5 +56,3 @@ from jx_python.expressions.true_op import TrueOp
 from jx_python.expressions.tuple_op import TupleOp
 from jx_python.expressions.variable import Variable
 from jx_python.expressions.when_op import WhenOp
-
-
