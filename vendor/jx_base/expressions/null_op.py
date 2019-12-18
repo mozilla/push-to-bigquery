@@ -19,6 +19,7 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
+from jx_base.expressions import literal, _utils
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.literal import Literal
 from jx_base.expressions.true_op import TRUE
@@ -106,3 +107,6 @@ class NullOp(Literal):
 NULL = NullOp()
 TYPE_ORDER[NullOp] = 9
 TYPE_ORDER[NULL] = 9
+
+literal.NULL = NULL
+_utils.NULL = NULL

@@ -19,10 +19,12 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import is_literal, simplified
+from jx_base.expressions import _utils
+from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.literal import Literal
+from jx_base.expressions.literal import is_literal
 from mo_dots import is_many
 from mo_json import OBJECT
 
@@ -63,3 +65,6 @@ class TupleOp(Expression):
             return self.lang[Literal([t.value for t in self.terms])]
 
         return self
+
+
+_utils.TupleOp=TupleOp

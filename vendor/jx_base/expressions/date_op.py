@@ -19,12 +19,12 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_times.dates import unicode2Date, Date
-
+from jx_base.expressions import literal
 from jx_base.expressions.literal import Literal
 from mo_dots import coalesce
 from mo_future import is_text
 from mo_json import NUMBER
+from mo_times.dates import unicode2Date, Date
 
 
 class DateOp(Literal):
@@ -52,3 +52,6 @@ class DateOp(Literal):
 
     def __call__(self, row=None, rownum=None, rows=None):
         return Date(self.date)
+
+
+literal.DateOp=DateOp

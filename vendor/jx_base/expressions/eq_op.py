@@ -19,19 +19,21 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import FALSE, TRUE
-from jx_base.expressions._utils import is_literal, simplified
+from jx_base.expressions._utils import simplified
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.basic_eq_op import BasicEqOp
-from jx_base.expressions.case_op import CaseOp
 from jx_base.expressions.expression import Expression
-from jx_base.expressions.in_op import InOp
+from jx_base.expressions.false_op import FALSE
+from jx_base.expressions.literal import is_literal
+from jx_base.expressions.true_op import TRUE
 from jx_base.expressions.variable import Variable
-from jx_base.expressions.when_op import WhenOp
 from jx_base.language import is_op, value_compare
 from mo_dots import is_many
 from mo_json import BOOLEAN
 
+CaseOp = None
+InOp = None
+WhneOp = None
 
 class EqOp(Expression):
     has_simple_form = True

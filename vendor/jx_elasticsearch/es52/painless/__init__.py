@@ -51,3 +51,4 @@ from jx_elasticsearch.es52.painless.variable import Variable
 from jx_elasticsearch.es52.painless.when_op import WhenOp
 
 
+Painless.register_ops(vars())

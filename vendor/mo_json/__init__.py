@@ -14,6 +14,8 @@ from decimal import Decimal
 import math
 import re
 
+from pyLibrary.env.big_data import FileString
+
 from mo_dots import Data, FlatList, Null, NullType, SLOT, is_data, wrap, wrap_leaves
 from mo_dots.objects import DataObject
 from mo_future import PY2, integer_types, is_binary, is_text, items, long, none_type, text
@@ -289,7 +291,7 @@ def json2value(json_string, params=Null, flexible=False, leaves=False):
     :param leaves: ASSUME JSON KEYS ARE DOT-DELIMITED
     :return: Python value
     """
-    if not is_text(json_string):
+    if not is_text(json_string) and not isinstance(json_string, FileString):
         Log.error("only unicode json accepted")
 
     try:

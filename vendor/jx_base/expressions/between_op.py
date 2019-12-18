@@ -19,7 +19,7 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import jx_expression, is_literal, simplified
+from jx_base.expressions._utils import jx_expression, simplified
 from jx_base.expressions.add_op import AddOp
 from jx_base.expressions.basic_substring_op import BasicSubstringOp
 from jx_base.expressions.case_op import CaseOp
@@ -27,7 +27,7 @@ from jx_base.expressions.expression import Expression
 from jx_base.expressions.find_op import FindOp
 from jx_base.expressions.is_number_op import IsNumberOp
 from jx_base.expressions.length_op import LengthOp
-from jx_base.expressions.literal import Literal, ZERO
+from jx_base.expressions.literal import Literal, ZERO, is_literal
 from jx_base.expressions.max_op import MaxOp
 from jx_base.expressions.min_op import MinOp
 from jx_base.expressions.null_op import NULL

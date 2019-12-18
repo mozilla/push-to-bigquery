@@ -19,11 +19,7 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import operators
-from jx_base.expressions.literal import Literal
-from jx_base.expressions.missing_op import MissingOp
-from jx_base.expressions.not_op import NotOp
-from jx_base.expressions.variable import Variable
+from jx_base.expressions._utils import operators, jx_expression, _jx_expression, simplified
 from jx_base.language import BaseExpression, ID, is_expression, is_op
 from mo_dots import is_data, is_sequence, is_container
 from mo_future import items as items_, text
@@ -173,3 +169,11 @@ class Expression(BaseExpression):
         self_class = self.__class__
         Log.note("this is slow on {{type}}", type=text(self_class.__name__))
         return self.__data__() == other.__data__()
+
+
+from jx_base.expressions.false_op import FALSE
+from jx_base.expressions.null_op import NULL
+from jx_base.expressions.literal import Literal, is_literal
+from jx_base.expressions.missing_op import MissingOp
+from jx_base.expressions.not_op import NotOp
+from jx_base.expressions.variable import Variable

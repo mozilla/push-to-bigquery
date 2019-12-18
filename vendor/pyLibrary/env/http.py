@@ -18,6 +18,8 @@
 
 from __future__ import absolute_import, division
 
+from mo_future import StringIO
+import zipfile
 from contextlib import closing
 from copy import copy
 from mmap import mmap
@@ -198,6 +200,14 @@ def get_json(url, **kwargs):
     response = get(url, **kwargs)
     try:
         c = response.all_content
+        path = URL(url).path
+        if path.endswith(".zip"):
+            buff = StringIO(c)
+            archive = zipfile.ZipFile(buff, mode='r')
+            c = archive.read(archive.namelist()[0])
+        elif path.endswith(".gz"):
+            c = convert.zip2bytes(c)
+
         return json2value(c.decode('utf8'))
     except Exception as e:
         if mo_math.round(response.status_code, decimal=-2) in [400, 500]:

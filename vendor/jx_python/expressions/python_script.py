@@ -18,6 +18,7 @@ from jx_base.expressions import (
     ZERO,
     Expression,
 )
+from jx_python.expressions import _utils
 from mo_dots import coalesce
 from mo_future import PY2, text
 from mo_logs import Log
@@ -78,3 +79,5 @@ class PythonScript(PythonScript_):
             return True
         else:
             return False
+
+_utils.PythonScript = PythonScript

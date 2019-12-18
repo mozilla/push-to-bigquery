@@ -19,25 +19,27 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import is_literal, simplified
+from jx_base.expressions import and_op, exists_op
+from jx_base.expressions._utils import simplified
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.basic_index_of_op import BasicIndexOfOp
 from jx_base.expressions.basic_substring_op import BasicSubstringOp
-from jx_base.expressions.case_op import CaseOp
 from jx_base.expressions.eq_op import EqOp
 from jx_base.expressions.exists_op import ExistsOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
+from jx_base.expressions.literal import is_literal
 from jx_base.expressions.missing_op import MissingOp
-from jx_base.expressions.ne_op import NeOp
 from jx_base.expressions.null_op import NULL
 from jx_base.expressions.or_op import OrOp
 from jx_base.expressions.true_op import TRUE
-from jx_base.expressions.when_op import WhenOp
 from jx_base.language import is_op
 from mo_json import BOOLEAN
 from mo_logs import Log
 
+CaseOp = None
+NeOp = None
+WhenOp = None
 
 class NotOp(Expression):
     data_type = BOOLEAN
@@ -117,3 +119,7 @@ class NotOp(Expression):
 
         output = inverse(self.lang[self.term].partial_eval())
         return output
+
+
+and_op.NotOp = NotOp
+exists_op.NotOp = NotOp

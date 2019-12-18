@@ -20,7 +20,6 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions._utils import simplified
-from jx_base.expressions.abs_op import AbsOp
 from jx_base.expressions.expression import Expression
 from jx_base.language import is_op
 from mo_json import NUMBER

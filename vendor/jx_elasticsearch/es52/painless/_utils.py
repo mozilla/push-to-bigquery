@@ -9,6 +9,8 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from jx_base.language import Language
+
 from jx_base.expressions import (
     FALSE,
     FalseOp as FalseOp_,
@@ -16,10 +18,8 @@ from jx_base.expressions import (
     NullOp,
     TRUE,
     TrueOp as TrueOp_,
-    define_language,
     extend,
 )
-from jx_elasticsearch.es52.painless._utils import Painless, false_script
 from jx_elasticsearch.es52.painless.and_op import AndOp
 from jx_elasticsearch.es52.painless.es_script import EsScript
 from jx_elasticsearch.es52.painless.literal import Literal
@@ -194,7 +194,7 @@ def to_es_script(self, schema, not_null=False, boolean=False, many=True):
     return true_script
 
 
-Painless = define_language("Painless", vars())
+Painless = Language("Painless")
 
 
 _count_template = (

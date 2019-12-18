@@ -10,6 +10,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import OrOp as OrOp_
+from jx_python.expressions import _utils
 from jx_python.expressions._utils import Python
 from jx_python.expressions.boolean_op import BooleanOp
 
@@ -19,3 +20,6 @@ class OrOp(OrOp_):
         return " or ".join(
             "(" + BooleanOp(Python[t]).to_python() + ")" for t in self.terms
         )
+
+
+_utils.OrOp = OrOp

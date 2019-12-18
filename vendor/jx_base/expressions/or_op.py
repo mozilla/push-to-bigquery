@@ -19,6 +19,7 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
+from jx_base.expressions import and_op
 from jx_base.expressions._utils import simplified
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.expression import Expression
@@ -93,3 +94,6 @@ class OrOp(Expression):
         if len(terms) == 1:
             return terms[0]
         return self.lang[OrOp(terms)]
+
+
+and_op.OrOp = OrOp

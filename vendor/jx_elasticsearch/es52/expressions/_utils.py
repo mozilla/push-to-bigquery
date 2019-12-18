@@ -17,9 +17,9 @@ from jx_base.expressions import (
     TrueOp as TrueOp_,
     Variable as Variable_,
     extend,
-    is_literal,
 )
-from jx_base.language import Language, define_language, is_op
+from jx_base.expressions.literal import is_literal
+from jx_base.language import Language, is_op
 from jx_elasticsearch.es52.painless import Painless
 from jx_elasticsearch.es52.util import MATCH_ALL, MATCH_NONE, es_script
 from mo_dots import Null, wrap
@@ -145,4 +145,4 @@ def get_type(var_name):
 json_type_to_es_script_type = {"string": "s", "boolean": "b", "number": "n"}
 
 
-ES52 = define_language("ES52", vars())
+ES52 = Language("ES52")

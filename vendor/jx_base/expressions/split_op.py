@@ -19,12 +19,12 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import is_literal
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.eq_op import EqOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.find_op import FindOp
 from jx_base.expressions.literal import Literal
+from jx_base.expressions.literal import is_literal
 from jx_base.expressions.or_op import OrOp
 from jx_base.expressions.script_op import ScriptOp
 from jx_base.expressions.true_op import TRUE

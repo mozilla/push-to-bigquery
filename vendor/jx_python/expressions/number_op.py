@@ -9,7 +9,9 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import NumberOp as NumberOp_, TRUE
+from jx_base.expressions.number_op import NumberOp as NumberOp_
+from jx_base.expressions.true_op import TRUE
+from jx_python.expressions import _utils
 from jx_python.expressions._utils import Python
 from mo_json import INTEGER, NUMBER
 
@@ -36,3 +38,6 @@ class NumberOp(NumberOp_):
                     + Python[exists].to_python()
                     + ") else None"
                 )
+
+
+_utils.NumperOp = NumberOp

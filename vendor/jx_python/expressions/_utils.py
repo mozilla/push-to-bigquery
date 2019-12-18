@@ -15,19 +15,15 @@ from jx_base.expressions import (
     FALSE,
     NULL,
     NullOp,
-    define_language,
     extend,
     jx_expression,
 )
-from jx_base.language import is_expression, is_op
-from jx_python.expressions.number_op import NumberOp
-from jx_python.expressions.or_op import OrOp
-from jx_python.expressions.python_script import PythonScript
-from jx_python.expressions.script_op import ScriptOp
-from jx_python.expressions.when_op import WhenOp
+from jx_base.language import Language, is_expression, is_op
 from mo_dots import is_data, is_list, Null
 from mo_future import is_text
 from mo_json import BOOLEAN
+
+NumberOp, OrOp, PythonScript, ScriptOp, WhenOp = [None]*5
 
 
 def jx_expression_to_function(expr):
@@ -118,7 +114,7 @@ def assign_and_eval(var, expression, eval):
     return "[(" + eval + ") for " + var + " in [" + expression + "]][0]"
 
 
-Python = define_language("Python", vars())
+Python = Language("Python")
 
 
 _python_operators = {

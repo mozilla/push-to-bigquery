@@ -23,14 +23,14 @@ from jx_base.expressions._utils import simplified
 from jx_base.expressions.boolean_op import BooleanOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
-from jx_base.expressions.not_op import NotOp
-from jx_base.expressions.or_op import OrOp
 from jx_base.expressions.true_op import TRUE
 from jx_base.language import is_op
 from mo_dots import is_many
 from mo_future import zip_longest
 from mo_json import BOOLEAN
 
+NotOp = None
+OrOp = None
 
 class AndOp(Expression):
     data_type = BOOLEAN

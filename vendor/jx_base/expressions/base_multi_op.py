@@ -19,12 +19,12 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import simplified, builtin_ops, is_literal, operators
+from jx_base.expressions._utils import simplified, builtin_ops, operators
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.coalesce_op import CoalesceOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
-from jx_base.expressions.literal import Literal, ZERO, ONE
+from jx_base.expressions.literal import Literal, ZERO, ONE, is_literal
 from jx_base.expressions.null_op import NULL
 from jx_base.expressions.or_op import OrOp
 from jx_base.expressions.true_op import TRUE

@@ -15,7 +15,6 @@ from jx_base.expressions import (
     NULL,
     NullOp,
     TrueOp,
-    define_language,
     extend,
 )
 from jx_bigquery.expressions.number_op import NumberOp
@@ -151,7 +150,7 @@ def basic_multiop_to_sql(self, schema, not_null=False, boolean=False, many=False
     return wrap([{"name": ".", "sql": {"n": sql}}])
 
 
-SQLang = define_language("SQLang", vars())
+SQLang = Language("SQLang")
 
 
 _sql_operators = {

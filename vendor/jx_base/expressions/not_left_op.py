@@ -19,11 +19,12 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import is_literal, simplified
+from jx_base.expressions._utils import simplified
 from jx_base.expressions.basic_substring_op import BasicSubstringOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.length_op import LengthOp
 from jx_base.expressions.literal import ZERO
+from jx_base.expressions.literal import is_literal
 from jx_base.expressions.max_op import MaxOp
 from jx_base.expressions.min_op import MinOp
 from jx_base.expressions.or_op import OrOp

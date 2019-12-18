@@ -19,15 +19,13 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import is_literal, simplified, value2json
-from jx_base.expressions.date_op import DateOp
+from jx_base.expressions import _utils
+from jx_base.expressions._utils import simplified, value2json
 from jx_base.expressions.expression import Expression
-from jx_base.expressions.false_op import FALSE
-from jx_base.expressions.null_op import NULL
-from jx_base.expressions.true_op import TRUE
 from mo_dots import Null, is_data
 from mo_json import python_type_to_json_type
 
+DateOp, FALSE, TRUE, NULL = [None]*4
 
 class Literal(Expression):
     """
@@ -119,3 +117,21 @@ class Literal(Expression):
 
 ZERO = Literal(0)
 ONE = Literal(1)
+
+
+literal_op_ids = tuple()
+
+
+def register_literal(op):
+    global literal_op_ids
+    literal_op_ids = literal_op_ids+(op.get_id(),)
+
+
+def is_literal(l):
+    try:
+        return l.get_id() in literal_op_ids
+    except Exception:
+        return False
+
+
+_utils.Literal = Literal

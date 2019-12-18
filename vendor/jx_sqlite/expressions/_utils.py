@@ -9,16 +9,16 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from jx_base.language import Language
+
 from jx_base.expressions import (
     FALSE,
     FalseOp,
     NULL,
     NullOp,
     TrueOp,
-    define_language,
     extend,
 )
-from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.expressions.number_op import NumberOp
 from jx_sqlite.expressions.or_op import OrOp
 from jx_sqlite.expressions.sql_script import SQLScript
@@ -152,7 +152,7 @@ def basic_multiop_to_sql(self, schema, not_null=False, boolean=False, many=False
     return wrap([{"name": ".", "sql": {"n": sql}}])
 
 
-SQLang = define_language("SQLang", vars())
+SQLang = Language("SQLang")
 
 
 _sql_operators = {

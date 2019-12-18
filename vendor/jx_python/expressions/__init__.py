@@ -56,3 +56,5 @@ from jx_python.expressions.true_op import TrueOp
 from jx_python.expressions.tuple_op import TupleOp
 from jx_python.expressions.variable import Variable
 from jx_python.expressions.when_op import WhenOp
+
+Python.register_ops(vars())

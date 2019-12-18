@@ -15,3 +15,4 @@ from jx_base.expressions import TrueOp as TrueOp_
 class TrueOp(TrueOp_):
     def to_python(self, not_null=False, boolean=False, many=False):
         return "True"
+

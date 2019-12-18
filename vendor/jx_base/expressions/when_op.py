@@ -19,6 +19,7 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
+from jx_base.expressions import first_op, eq_op, not_op
 from jx_base.expressions._utils import simplified
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.boolean_op import BooleanOp
@@ -111,3 +112,8 @@ class WhenOp(Expression):
                 return self.lang[NotOp(when)].partial_eval()
 
         return self.lang[WhenOp(when, **{"then": then, "else": els_})]
+
+
+first_op.WhenOp = WhenOp
+eq_op.WhenOp = WhenOp
+not_op.WhenOp = WhenOp

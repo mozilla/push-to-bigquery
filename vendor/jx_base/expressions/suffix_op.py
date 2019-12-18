@@ -21,11 +21,13 @@ from __future__ import absolute_import, division, unicode_literals
 
 import re
 
+from jx_base.expressions._utils import simplified
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.expression import Expression
-from jx_base.expressions.literal import Literal
+from jx_base.expressions.false_op import FALSE
+from jx_base.expressions.literal import Literal, is_literal
 from jx_base.expressions.reg_exp_op import RegExpOp
-from jx_base.expressions.suffix_op import SuffixOp
+from jx_base.expressions.true_op import TRUE
 from jx_base.expressions.variable import Variable
 from jx_base.expressions.when_op import WhenOp
 from jx_base.language import is_op

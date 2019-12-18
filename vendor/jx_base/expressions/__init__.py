@@ -1,4 +1,5 @@
-from jx_base.expressions._utils import simplified, extend, jx_expression, is_literal, merge_types
+from jx_base.expressions import _utils
+from jx_base.expressions._utils import simplified, extend, jx_expression, merge_types, operators, language
 from jx_base.expressions.abs_op import AbsOp
 from jx_base.expressions.add_op import AddOp
 from jx_base.expressions.and_op import AndOp
@@ -44,7 +45,7 @@ from jx_base.expressions.last_op import LastOp
 from jx_base.expressions.leaves_op import LeavesOp
 from jx_base.expressions.left_op import LeftOp
 from jx_base.expressions.length_op import LengthOp
-from jx_base.expressions.literal import Literal, ONE, ZERO
+from jx_base.expressions.literal import Literal, ONE, ZERO, register_literal
 from jx_base.expressions.lt_op import LtOp
 from jx_base.expressions.lte_op import LteOp
 from jx_base.expressions.max_op import MaxOp
@@ -83,6 +84,87 @@ from jx_base.expressions.union_op import UnionOp
 from jx_base.expressions.unix_op import UnixOp
 from jx_base.expressions.variable import Variable
 from jx_base.expressions.when_op import WhenOp
-from jx_base.language import define_language
+from mo_dots import set_default
 
+set_default(operators, {
+    "abs": AbsOp,
+    "add": AddOp,
+    "and": AndOp,
+    "basic.add": BasicAddOp,
+    "basic.mul": BasicMulOp,
+    "between": BetweenOp,
+    "case": CaseOp,
+    "coalesce": CoalesceOp,
+    "concat": ConcatOp,
+    "count": CountOp,
+    "date": DateOp,
+    "div": DivOp,
+    "divide": DivOp,
+    "eq": EqOp,
+    "exists": ExistsOp,
+    "exp": ExpOp,
+    "find": FindOp,
+    "first": FirstOp,
+    "floor": FloorOp,
+    "from_unix": FromUnixOp,
+    "get": GetOp,
+    "gt": GtOp,
+    "gte": GteOp,
+    "in": InOp,
+    "instr": FindOp,
+    "is_number": IsNumberOp,
+    "is_string": IsStringOp,
+    "last": LastOp,
+    "left": LeftOp,
+    "length": LengthOp,
+    "literal": Literal,
+    "lt": LtOp,
+    "lte": LteOp,
+    "match_all": TrueOp,
+    "max": MaxOp,
+    "minus": SubOp,
+    "missing": MissingOp,
+    "mod": ModOp,
+    "mul": MulOp,
+    "mult": MulOp,
+    "multiply": MulOp,
+    "ne": NeOp,
+    "neq": NeOp,
+    "not": NotOp,
+    "not_left": NotLeftOp,
+    "not_right": NotRightOp,
+    "null": NullOp,
+    "number": NumberOp,
+    "offset": OffsetOp,
+    "or": OrOp,
+    "postfix": SuffixOp,
+    "prefix": PrefixOp,
+    "range": RangeOp,
+    "regex": RegExpOp,
+    "regexp": RegExpOp,
+    "right": RightOp,
+    "rows": RowsOp,
+    "script": ScriptOp,
+    "select": SelectOp,
+    "split": SplitOp,
+    "string": StringOp,
+    "suffix": SuffixOp,
+    "sub": SubOp,
+    "subtract": SubOp,
+    "sum": AddOp,
+    "term": EqOp,
+    "terms": InOp,
+    "tuple": TupleOp,
+    "union": UnionOp,
+    "unix": UnixOp,
+    "when": WhenOp,
+})
+
+language.register_ops(vars())
+
+register_literal(NullOp)
+register_literal(FalseOp)
+register_literal(TrueOp)
+register_literal(DateOp)
+register_literal(Literal)
 

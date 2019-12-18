@@ -22,8 +22,9 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
-from jx_base.expressions.not_op import NotOp
 from mo_json import BOOLEAN
+
+NotOp = None
 
 
 class ExistsOp(Expression):

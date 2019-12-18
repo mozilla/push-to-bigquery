@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from copy import deepcopy
 
-from mo_future import generator_types, text
+from mo_future import generator_types, text, first
 
 from mo_dots import CLASS, coalesce, unwrap, wrap
 from mo_dots.nones import Null
@@ -281,6 +281,18 @@ class FlatList(list):
             return FlatList([oper(v) for v in _get_list(self)])
         else:
             return FlatList([oper(v) for v in _get_list(self) if v != None])
+
+
+def last(values):
+    if len(values):
+        if isinstance(values, FlatList):
+            return values.last()
+        if is_sequence(values):
+            return values[-1]
+        else:
+            return first(values)
+    else:
+        return Null
 
 
 FlatList.EMPTY = Null
