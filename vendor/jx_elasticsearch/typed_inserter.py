@@ -9,13 +9,13 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from jx_elasticsearch.elasticsearch import parse_properties, random_id
 from jx_python import jx
 from mo_dots import Data, ROOT_PATH, is_data, unwrap
 from mo_future import text
 from mo_json import NESTED, OBJECT, json2value, value2json
 from mo_json.encoder import UnicodeBuilder
 from mo_json.typed_encoder import typed_encode
-from pyLibrary.env.elasticsearch import parse_properties, random_id
 
 
 class TypedInserter(object):
@@ -36,15 +36,15 @@ class TypedInserter(object):
         else:
             self.schema = {}
 
-    def typed_encode(self, r):
+    def typed_encode(self, record):
         """
         :param record:  expecting id and value properties
         :return:  dict with id and json properties
         """
         try:
-            value = r.get('value')
-            if "json" in r:
-                value = json2value(r["json"])
+            value = record.get('value')
+            if "json" in record:
+                value = json2value(record["json"])
             elif is_data(value) or value != None:
                 pass
             else:
@@ -65,7 +65,7 @@ class TypedInserter(object):
                 version = None
 
             if given_id:
-                record_id = r.get('id')
+                record_id = record.get('id')
                 if record_id and record_id != given_id:
                     from mo_logs import Log
 
@@ -76,7 +76,7 @@ class TypedInserter(object):
                         given=given_id
                     )
             else:
-                record_id = r.get('id')
+                record_id = record.get('id')
                 if record_id:
                     given_id = record_id
                 else:

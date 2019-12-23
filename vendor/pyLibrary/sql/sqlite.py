@@ -592,6 +592,13 @@ def sql_alias(value, alias):
     return ConcatSQL((value, SQL_AS, quote_column(alias)))
 
 
+def sql_call(func_name, parameters):
+    return ConcatSQL((
+        SQL(func_name),
+        sql_iso(JoinSQL(SQL_COMMA, parameters))
+    ))
+
+
 def quote_value(value):
     if isinstance(value, (Mapping, list)):
         return SQL(".")

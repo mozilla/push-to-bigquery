@@ -138,7 +138,7 @@ class Index(object):
                 Log.error("do not know how to handle id={{id}}", id=id)
 
             if typed:
-                from pyLibrary.env.typed_inserter import TypedInserter
+                from jx_elasticsearch.typed_inserter import TypedInserter
 
                 self.encode = TypedInserter(self, id_info).typed_encode
             else:

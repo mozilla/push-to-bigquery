@@ -1,5 +1,28 @@
 {
-    "bigquery": {"$ref": "file:///e:/moz-fx-dev-ekyle-treeherder-a838a7718652.json"},
+    "push": {
+        "source": {
+            "s3": {
+
+
+            }
+        },
+        "destination": {
+            "account_info": {
+                "$ref": "file:///e:/moz-fx-dev-ekyle-treeherder-a838a7718652.json"
+            },
+            "dataset": "treeherder",
+            "table": "jobs",
+            "partition": {
+                "field": "action.request_time",
+                "expire": "2year"
+            },
+            "schema": {
+                "id": "number"
+            },
+            "cluster": "id",
+            "sharded": true
+        }
+    },
     "constants": {},
     "debug": {
         "trace": true

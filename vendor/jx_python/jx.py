@@ -554,15 +554,18 @@ def sort(data, fieldnames=None, already_normalized=False):
         if data == None:
             return Null
 
-        if not fieldnames:
-            return wrap(sort_using_cmp(data, value_compare))
-
-        if already_normalized:
-            formal = fieldnames
+        if isinstance(fieldnames, int):
+            funcs = [(lambda t: t[fieldnames], 1)]
         else:
-            formal = query._normalize_sort(fieldnames)
+            if not fieldnames:
+                return wrap(sort_using_cmp(data, value_compare))
 
-        funcs = [(jx_expression_to_function(f.value), f.sort) for f in formal]
+            if already_normalized:
+                formal = fieldnames
+            else:
+                formal = query._normalize_sort(fieldnames)
+
+            funcs = [(jx_expression_to_function(f.value), f.sort) for f in formal]
 
         def comparer(left, right):
             for func, sort_ in funcs:

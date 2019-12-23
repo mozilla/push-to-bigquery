@@ -100,7 +100,7 @@ class Container(object):
     def create_or_replace_facts(self, fact_name, uid=UID):
         """
         MAKE NEW TABLE, REPLACE OLD ONE IF EXISTS
-        :param fact_name:  NAME FOR THE CENTRAL FACTS
+        :param fact_name:  NAME FOR THE CENTRAL INDEX
         :param uid: name, or list of names, for the GUID
         :return: Facts
         """
@@ -130,7 +130,7 @@ class Container(object):
     def get_or_create_facts(self, fact_name, uid=UID):
         """
         FIND TABLE BY NAME, OR CREATE IT IF IT DOES NOT EXIST
-        :param fact_name:  NAME FOR THE CENTRAL FACTS
+        :param fact_name:  NAME FOR THE CENTRAL INDEX
         :param uid: name, or list of names, for the GUID
         :return: Facts
         """

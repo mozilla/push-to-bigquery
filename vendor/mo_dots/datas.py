@@ -188,6 +188,32 @@ class Data(MutableMapping):
     def __iadd__(self, other):
         return _iadd(self, other)
 
+    def __or__(self, other):
+        if not _get(other, CLASS) in data_types:
+            get_logger().error("Expecting a Mapping")
+
+        output = object.__new__(Data)
+        output._internal_dict = {}
+        d = self._internal_dict
+        for ok, ov in other.items():
+            sv = d.get(ok)
+            output[ok] = sv | ov
+        return output
+
+    def __ror__(self, other):
+        if not _get(other, CLASS) in data_types:
+            get_logger().error("Expecting a Mapping")
+
+        return wrap(other).__or__(self)
+
+    def __ior__(self, other):
+        if not _get(other, CLASS) in data_types:
+            get_logger().error("Expecting a Mapping")
+        d = self._internal_dict
+        for ok, ov in other.items():
+            sv = d.get(ok)
+            d[ok] = sv | ov
+        return d
 
     def __hash__(self):
         d = self._internal_dict
