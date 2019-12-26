@@ -221,7 +221,6 @@ def sql_concat_text(list_):
     """
     return JoinSQL(SQL_CONCAT, [sql_iso(l) for l in list_])
 
-
 def sql_coalesce(list_):
     return ConcatSQL((SQL("COALESCE("), JoinSQL(SQL_COMMA, list_), SQL_CP))
 

@@ -16,10 +16,12 @@
                 "field": "action.request_time",
                 "expire": "2year"
             },
-            "schema": {
-                "id": "number"
+            "schema": {},
+            "id":{
+                "field": "job.id",
+                "version": "last_updated"
             },
-            "cluster": "id",
+            "cluster": "job.id",
             "sharded": true
         }
     },

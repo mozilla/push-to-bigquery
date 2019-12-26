@@ -1,3 +1,5 @@
 .idea
 .svn
 /*.iml
+*.pyc
+/push_to_bigquery/temp.sql

@@ -2,9 +2,9 @@ import string
 
 from google.cloud.bigquery import SchemaField
 
-from jx_bigquery.sql import quote_column, escape_name
+from jx_bigquery.sql import escape_name
 from jx_python import jx
-from mo_dots import is_many, is_data, set_default, coalesce, unwrap
+from mo_dots import is_many, is_data
 from mo_future import is_text
 from mo_json import (
     BOOLEAN,
@@ -18,8 +18,8 @@ from mo_json import (
 from mo_logs import Log
 
 ALLOWED = string.ascii_letters + string.digits
-PARTITION_FIELD = "_partition"  # name of column to use for partitioning
-BQ_PARITITION_FIELD = [SchemaField(name=escape_name(PARTITION_FIELD), field_type="TIMESTAMP", mode="NULLABLE")]
+PARTITION_FIELD ="_partition"  # name of column to use for partitioning
+BQ_PARITITION_FIELD = [SchemaField(name=str(escape_name(PARTITION_FIELD)), field_type="TIMESTAMP", mode="NULLABLE")]
 
 
 def typed_encode(value, schema):
@@ -44,12 +44,12 @@ def typed_encode(value, schema):
             nest_added |= n
 
         if update:
-            return {REPEATED: output}, {NESTED_TYPE: update}, True
+            return {str(REPEATED): output}, {NESTED_TYPE: update}, True
         else:
-            return {REPEATED: output}, None, nest_added
+            return {str(REPEATED): output}, None, nest_added
     elif NESTED_TYPE in schema:
         if not value:
-            return {REPEATED: []}, None, False
+            return {str(REPEATED): []}, None, False
         else:
             return typed_encode([value], schema)
     elif is_data(value):
@@ -61,7 +61,7 @@ def typed_encode(value, schema):
             if not child_schema:
                 child_schema = schema[k] = {}
             result, more_update, n = typed_encode(v, child_schema)
-            output[quote_column(k)] = result
+            output[str(escape_name(k))] = result
             if more_update:
                 update.update({k: more_update})
                 nest_added |= n
@@ -76,7 +76,7 @@ def typed_encode(value, schema):
             )
         return value, None, False
     elif value is None:
-        return {quote_column(t): None for t, child_schema in schema}, None, False
+        return {str(escape_name(t)): None for t, child_schema in schema}, None, False
     else:
         t, json_type = schema_type(value)
         child_schema = schema.get(t)
@@ -84,7 +84,7 @@ def typed_encode(value, schema):
         if not child_schema:
             schema[t] = json_type
             update = {t: json_type}
-        return {quote_column(t): value}, update, False
+        return {str(escape_name(t)): value}, update, False
 
 
 def schema_type(value):
@@ -93,6 +93,8 @@ def schema_type(value):
 
 
 def schema_to_bq_schema(schema):
+    if not schema:
+        return []
     output = _schema_to_bq_schema(schema)
     return output
 
@@ -113,7 +115,7 @@ def _schema_to_bq_schema(schema):
             fields = ()
         else:
             fields = _schema_to_bq_schema(sub_schema)
-        struct = SchemaField(name=escape_name(t), fields=fields, **bqt)
+        struct = SchemaField(name=str(escape_name(t)), fields=fields, **bqt)
         output.append(struct)
     return output
 

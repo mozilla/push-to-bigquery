@@ -9,7 +9,7 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from collections import MutableMapping
+from collections import MutableMapping, OrderedDict
 from copy import copy, deepcopy
 from decimal import Decimal
 
@@ -421,7 +421,7 @@ def _iadd(self, other):
     return self
 
 
-data_types = (Data, dict)  # TYPES TO HOLD DATA
+data_types = (Data, dict, OrderedDict)  # TYPES TO HOLD DATA
 
 
 def register_data(type_):

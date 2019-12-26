@@ -11,10 +11,9 @@ from __future__ import absolute_import, division, unicode_literals
 import string
 from collections import Mapping
 
-from mo_files.url import hex2chr
-
 from jx_python import jx
 from mo_dots import listwrap, wrap
+from mo_files.url import hex2chr
 from mo_future import text, first, is_text
 from mo_logs import Log
 from mo_times import Date, Duration
@@ -37,19 +36,57 @@ from pyLibrary.sql import (
     SQL_ORDERBY,
     SQL_STAR,
     SQL_LT,
-    SQL_AS,
-    SQL_CR)
-
+    SQL_AS)
 
 ALLOWED = string.ascii_letters + string.digits
 
 
-def quote_column(*names):
-    esc_name = SQL(".".join("`"+escape_name(name)+"`" for name in names))
+def quote_column(name):
+    if not isinstance(name, ApiName):
+        Log.error("expecting ApiName")
+    esc_name = SQL(".".join("`" + n + "`" for n in name.values))
     return esc_name
 
 
+class ApiName(object):
+    """
+    For calling BG API
+    """
+
+    __slots__ = ["values"]
+
+    def __init__(self, *values):
+        """
+        :param values:  API Names
+        """
+        if any(not is_text(n) for n in values):
+            Log.error("expecting strings")
+        self.values = values
+
+    def __add__(self, other):
+        if not isinstance(other, ApiName):
+            Log.error("not alloweed")
+        return ApiName(*(self.values + other.values))
+
+    def __radd__(self, other):
+        Log.error("disabled")
+
+    def __iadd__(self, other):
+        Log.error("disabled")
+
+    def __eq__(self, other):
+        if not isinstance(other, ApiName):
+            Log.error("not alloweed")
+        return self.values == other.values
+
+    def __str__(self):
+        return ".".join(self.values)
+
+
 def escape_name(name):
+    if isinstance(name, ApiName):
+        return name
+
     def quote(c):
         if c == "_":
             return "__"
@@ -58,11 +95,15 @@ def escape_name(name):
         return "_" + hex(ord(c))[2:] + "_"
 
     esc_name = "".join(map(quote, name))
-    return esc_name
+    return ApiName(esc_name)
 
 
 def unescape_name(esc_name):
-    parts = esc_name.split("_")
+    if not isinstance(esc_name, ApiName):
+        Log.error("expecting an api name")
+    if len(esc_name.values)>1:
+        Log.error("do not knwo how to handle")
+    parts = str(esc_name).split("_")
     result = parts[:1]
     for i, (p, q) in jx.chunk(parts[1:], 2):
         if len(p) == 0:
@@ -75,8 +116,8 @@ def unescape_name(esc_name):
 
 
 def sql_alias(value, alias):
-    if not isinstance(value, SQL) or not is_text(alias):
-        Log.error("Expecting (SQL, text) parameters")
+    if not isinstance(value, SQL) or not isinstance(alias, ApiName):
+        Log.error("Expecting (SQL, ApiName) parameters")
     return ConcatSQL((value, SQL_AS, quote_column(alias)))
 
 

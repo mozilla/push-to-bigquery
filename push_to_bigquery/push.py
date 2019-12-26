@@ -1,6 +1,13 @@
 from google.cloud.bigquery import Client
 from google.oauth2 import service_account
 
+from mo_json import json2value
+from pyLibrary.env import http
+
+from pyLibrary.convert import zip2bytes
+
+from mo_logs.strings import expand_template
+
 from jx_bigquery import bigquery
 from mo_logs import startup, constants, Log
 
@@ -29,7 +36,7 @@ def push(config):
 
     container = bigquery.Dataset(config.destination)
 
-    index = container.get_or_create_table(config.destination)
+    index = container.get_or_create_table("testing", sharded=True)
 
     index.merge_shards()
 
@@ -37,7 +44,7 @@ def push(config):
     #
     # base_url = "https://active-data-treeherder-normalized.s3-us-west-2.amazonaws.com/{{major}}.{{minor}}.json.gz"
     # major = 1700
-    # minor = 0
+    # minor = 165
     # while True:
     #     url = expand_template(base_url, {"major": major, "minor": minor})
     #     try:

@@ -383,9 +383,12 @@ def between(value, prefix, suffix, start=0):
         return None
     s += len(prefix)
 
-    e = value.find(suffix, s)
-    if e == -1:
-        return None
+    if suffix is None:
+        e = len(value)
+    else:
+        e = value.find(suffix, s)
+        if e == -1:
+            return None
 
     s = value.rfind(prefix, start, e) + len(prefix)  # WE KNOW THIS EXISTS, BUT THERE MAY BE A RIGHT-MORE ONE
 
