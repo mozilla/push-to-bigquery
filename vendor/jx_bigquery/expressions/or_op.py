@@ -10,14 +10,15 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import OrOp as OrOp_
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_bigquery.expressions import _utils
+from jx_bigquery.expressions._utils import BQLang, check
 from mo_dots import wrap
 from pyLibrary.sql import SQL_OR, sql_iso, JoinSQL
 
 
 class OrOp(OrOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_bq(self, schema, not_null=False, boolean=False):
         return wrap(
             [
                 {
@@ -26,7 +27,7 @@ class OrOp(OrOp_):
                         "b": JoinSQL(
                             SQL_OR,
                             [
-                                sql_iso(SQLang[t].to_sql(schema, boolean=True)[0].sql.b)
+                                sql_iso(BQLang[t].to_bq(schema, boolean=True)[0].sql.b)
                                 for t in self.terms
                             ],
                         )
@@ -34,3 +35,6 @@ class OrOp(OrOp_):
                 }
             ]
         )
+
+
+_utils.OrOp = OrOp

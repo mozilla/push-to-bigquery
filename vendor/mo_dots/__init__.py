@@ -10,6 +10,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import sys
+from collections import OrderedDict
 
 from mo_dots.utils import CLASS, OBJ, get_logger, get_module
 from mo_future import binary_type, generator_types, is_binary, is_text, text
@@ -460,7 +461,7 @@ def wrap(v):
 
     type_ = _get(v, CLASS)
 
-    if type_ is dict:
+    if type_ in (dict, OrderedDict):
         m = object.__new__(Data)
         _set(m, SLOT, v)
         return m

@@ -10,14 +10,14 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import AndOp as AndOp_
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_bigquery.expressions._utils import BQLang, check
 from mo_dots import wrap
 from pyLibrary.sql import SQL_AND, SQL_FALSE, SQL_TRUE, sql_iso
 
 
 class AndOp(AndOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_bq(self, schema, not_null=False, boolean=False):
         if not self.terms:
             return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
         elif all(self.terms):
@@ -29,7 +29,7 @@ class AndOp(AndOp_):
                             "b": SQL_AND.join(
                                 [
                                     sql_iso(
-                                        SQLang[t].to_sql(schema, boolean=True)[0].sql.b
+                                        BQLang[t].to_bq(schema, boolean=True)[0].sql.b
                                     )
                                     for t in self.terms
                                 ]

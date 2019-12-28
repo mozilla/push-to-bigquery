@@ -17,7 +17,7 @@ from pyLibrary.sql import SQL_TRUE, sql_iso
 
 class PrefixOp(PrefixOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_bq(self, schema, not_null=False, boolean=False):
         if not self.expr:
             return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
         else:
@@ -28,9 +28,9 @@ class PrefixOp(PrefixOp_):
                         "sql": {
                             "b": "INSTR"
                             + sql_iso(
-                                self.expr.to_sql(schema)[0].sql.s
+                                self.expr.to_bq(schema)[0].sql.s
                                 + ", "
-                                + self.prefix.to_sql(schema)[0].sql.s
+                                + self.prefix.to_bq(schema)[0].sql.s
                             )
                             + "==1"
                         },

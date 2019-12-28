@@ -16,11 +16,11 @@ from pyLibrary.sql import SQL
 
 class BasicEqOp(BasicEqOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False, many=False):
+    def to_bq(self, schema, not_null=False, boolean=False, many=False):
         return (
             "("
-            + SQL[self.rhs].to_sql(schema)
+            + SQL[self.rhs].to_bq(schema)
             + ") == ("
-            + SQL[self.lhs].to_sql(schema)
+            + SQL[self.lhs].to_bq(schema)
             + ")"
         )

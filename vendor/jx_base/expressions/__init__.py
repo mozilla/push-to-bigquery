@@ -45,7 +45,7 @@ from jx_base.expressions.last_op import LastOp
 from jx_base.expressions.leaves_op import LeavesOp
 from jx_base.expressions.left_op import LeftOp
 from jx_base.expressions.length_op import LengthOp
-from jx_base.expressions.literal import Literal, ONE, ZERO, register_literal
+from jx_base.expressions.literal import Literal, ONE, ZERO, register_literal, is_literal
 from jx_base.expressions.lt_op import LtOp
 from jx_base.expressions.lte_op import LteOp
 from jx_base.expressions.max_op import MaxOp

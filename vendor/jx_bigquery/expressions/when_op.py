@@ -10,17 +10,17 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import WhenOp as WhenOp_
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_bigquery.expressions._utils import BQLang, check
 from mo_dots import wrap
 from pyLibrary.sql import SQL_CASE, SQL_ELSE, SQL_END, SQL_NULL, SQL_THEN, SQL_WHEN
 
 
 class WhenOp(WhenOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False, many=True):
-        when = SQLang[self.when].partial_eval().to_sql(schema, boolean=True)[0].sql
-        then = SQLang[self.then].partial_eval().to_sql(schema, not_null=not_null)[0].sql
-        els_ = SQLang[self.els_].partial_eval().to_sql(schema, not_null=not_null)[0].sql
+    def to_bq(self, schema, not_null=False, boolean=False, many=True):
+        when = BQLang[self.when].partial_eval().to_bq(schema, boolean=True)[0].sql
+        then = BQLang[self.then].partial_eval().to_bq(schema, not_null=not_null)[0].sql
+        els_ = BQLang[self.els_].partial_eval().to_bq(schema, not_null=not_null)[0].sql
         output = {}
         for t in "bsn":
             if then[t] == None:

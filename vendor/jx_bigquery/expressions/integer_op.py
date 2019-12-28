@@ -17,8 +17,8 @@ from pyLibrary.sql import sql_coalesce
 
 class IntegerOp(IntegerOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = self.term.to_sql(schema, not_null=True)
+    def to_bq(self, schema, not_null=False, boolean=False):
+        value = self.term.to_bq(schema, not_null=True)
         acc = []
         for c in value:
             for t, v in c.sql.items():

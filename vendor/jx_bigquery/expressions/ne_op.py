@@ -17,9 +17,9 @@ from jx_bigquery.expressions.not_op import NotOp
 
 class NeOp(NeOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_bq(self, schema, not_null=False, boolean=False):
         return (
             NotOp("not", EqOp([self.lhs, self.rhs]).partial_eval())
             .partial_eval()
-            .to_sql(schema)
+            .to_bq(schema)
         )

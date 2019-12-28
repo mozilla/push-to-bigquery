@@ -9,6 +9,8 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from jx_base.language import Language
+
 from jx_base.expressions import (
     FALSE,
     FalseOp,
@@ -17,9 +19,6 @@ from jx_base.expressions import (
     TrueOp,
     extend,
 )
-from jx_bigquery.expressions.number_op import NumberOp
-from jx_bigquery.expressions.or_op import OrOp
-from jx_bigquery.expressions.sql_script import SQLScript
 from mo_dots import wrap, FlatList, is_data
 from mo_future import decorate
 from mo_json import BOOLEAN, NESTED, OBJECT, STRING, NUMBER, IS_NULL
@@ -37,21 +36,23 @@ from pyLibrary.sql import (
     SQL_LT,
 )
 
+NumberOp, OrOp, BQLScript = [None]*3
+
 
 def check(func):
     """
-    TEMPORARY TYPE CHECKING TO ENSURE to_sql() IS OUTPUTTING THE CORRECT FORMAT
+    TEMPORARY TYPE CHECKING TO ENSURE to_bq() IS OUTPUTTING THE CORRECT FORMAT
     """
 
     @decorate(func)
-    def to_sql(self, schema, not_null=False, boolean=False, **kwargs):
+    def to_bq(self, schema, not_null=False, boolean=False, **kwargs):
         if kwargs.get("many") != None:
             Log.error("not expecting many")
         try:
             output = func(self, schema, not_null, boolean)
         except Exception as e:
             Log.error("not expected", cause=e)
-        if isinstance(output, SQLScript):
+        if isinstance(output, BQLScript):
             return output
         if not isinstance(output, FlatList):
             Log.error("expecting FlatList")
@@ -64,34 +65,34 @@ def check(func):
                 Log.error("expecting text")
         return output
 
-    return to_sql
+    return to_bq
 
 
 @extend(NullOp)
 @check
-def to_sql(self, schema, not_null=False, boolean=False):
+def to_bq(self, schema, not_null=False, boolean=False):
     return wrap([{"name": ".", "sql": {"0": SQL_NULL}}])
 
 
 @extend(TrueOp)
 @check
-def to_sql(self, schema, not_null=False, boolean=False):
+def to_bq(self, schema, not_null=False, boolean=False):
     return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
 
 
 @extend(FalseOp)
 @check
-def to_sql(self, schema, not_null=False, boolean=False):
+def to_bq(self, schema, not_null=False, boolean=False):
     return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
 
 
-def _inequality_to_sql(self, schema, not_null=False, boolean=False, many=True):
+def _inequality_to_bq(self, schema, not_null=False, boolean=False, many=True):
     op, identity = _sql_operators[self.op]
-    lhs = NumberOp(self.lhs).partial_eval().to_sql(schema, not_null=True)[0].sql.n
-    rhs = NumberOp(self.rhs).partial_eval().to_sql(schema, not_null=True)[0].sql.n
+    lhs = NumberOp(self.lhs).partial_eval().to_bq(schema, not_null=True)[0].sql.n
+    rhs = NumberOp(self.rhs).partial_eval().to_bq(schema, not_null=True)[0].sql.n
     sql = sql_iso(lhs) + op + sql_iso(rhs)
 
-    output = SQLScript(
+    output = BQLScript(
         data_type=BOOLEAN,
         expr=sql,
         frum=self,
@@ -102,11 +103,11 @@ def _inequality_to_sql(self, schema, not_null=False, boolean=False, many=True):
 
 
 @check
-def _binaryop_to_sql(self, schema, not_null=False, boolean=False, many=True):
+def _binaryop_to_bq(self, schema, not_null=False, boolean=False, many=True):
     op, identity = _sql_operators[self.op]
 
-    lhs = NumberOp(self.lhs).partial_eval().to_sql(schema, not_null=True)[0].sql.n
-    rhs = NumberOp(self.rhs).partial_eval().to_sql(schema, not_null=True)[0].sql.n
+    lhs = NumberOp(self.lhs).partial_eval().to_bq(schema, not_null=True)[0].sql.n
+    rhs = NumberOp(self.rhs).partial_eval().to_bq(schema, not_null=True)[0].sql.n
     script = sql_iso(lhs) + op + sql_iso(rhs)
     if not_null:
         sql = script
@@ -117,7 +118,7 @@ def _binaryop_to_sql(self, schema, not_null=False, boolean=False, many=True):
         else:
             sql = (
                 "CASE WHEN "
-                + missing.to_sql(schema, boolean=True)[0].sql.b
+                + missing.to_bq(schema, boolean=True)[0].sql.b
                 + " THEN NULL ELSE "
                 + script
                 + " END"
@@ -125,32 +126,32 @@ def _binaryop_to_sql(self, schema, not_null=False, boolean=False, many=True):
     return wrap([{"name": ".", "sql": {"n": sql}}])
 
 
-def multiop_to_sql(self, schema, not_null=False, boolean=False, many=False):
+def multiop_to_bq(self, schema, not_null=False, boolean=False, many=False):
     sign, zero = _sql_operators[self.op]
     if len(self.terms) == 0:
-        return SQLang[self.default].to_sql(schema)
+        return BQLang[self.default].to_bq(schema)
     elif self.default is NULL:
         return sign.join(
-            "COALESCE(" + SQLang[t].to_sql(schema) + ", " + zero + ")"
+            "COALESCE(" + BQLang[t].to_bq(schema) + ", " + zero + ")"
             for t in self.terms
         )
     else:
         return (
             "COALESCE("
-            + sign.join("(" + SQLang[t].to_sql(schema) + ")" for t in self.terms)
+            + sign.join("(" + BQLang[t].to_bq(schema) + ")" for t in self.terms)
             + ", "
-            + SQLang[self.default].to_sql(schema)
+            + BQLang[self.default].to_bq(schema)
             + ")"
         )
 
 
-def basic_multiop_to_sql(self, schema, not_null=False, boolean=False, many=False):
+def basic_multiop_to_bq(self, schema, not_null=False, boolean=False, many=False):
     op, identity = _sql_operators[self.op.split("basic.")[1]]
-    sql = op.join(sql_iso(SQLang[t].to_sql(schema)[0].sql.n) for t in self.terms)
+    sql = op.join(sql_iso(BQLang[t].to_bq(schema)[0].sql.n) for t in self.terms)
     return wrap([{"name": ".", "sql": {"n": sql}}])
 
 
-SQLang = Language("SQLang")
+BQLang = Language("BQLang")
 
 
 _sql_operators = {
@@ -169,7 +170,7 @@ _sql_operators = {
 }
 
 
-json_type_to_sql_type = {
+json_type_to_bq_type = {
     IS_NULL: "0",
     BOOLEAN: "b",
     NUMBER: "n",

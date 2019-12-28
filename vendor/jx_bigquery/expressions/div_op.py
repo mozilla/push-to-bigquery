@@ -10,17 +10,17 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import DivOp as DivOp_
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_bigquery.expressions._utils import BQLang, check
 from mo_dots import Null, wrap
 from pyLibrary.sql import sql_coalesce, sql_iso
 
 
 class DivOp(DivOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = SQLang[self.lhs].to_sql(schema)[0].sql.n
-        rhs = SQLang[self.rhs].to_sql(schema)[0].sql.n
-        d = SQLang[self.default].to_sql(schema)[0].sql.n
+    def to_bq(self, schema, not_null=False, boolean=False):
+        lhs = BQLang[self.lhs].to_bq(schema)[0].sql.n
+        rhs = BQLang[self.rhs].to_bq(schema)[0].sql.n
+        d = BQLang[self.default].to_bq(schema)[0].sql.n
 
         if lhs and rhs:
             if d == None:

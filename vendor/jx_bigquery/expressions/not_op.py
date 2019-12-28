@@ -19,7 +19,7 @@ from pyLibrary.sql import sql_iso
 
 class NotOp(NotOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_bq(self, schema, not_null=False, boolean=False):
         not_expr = NotOp(BooleanOp(self.term)).partial_eval()
         if is_op(not_expr, NotOp):
             return wrap(
@@ -27,10 +27,10 @@ class NotOp(NotOp_):
                     {
                         "name": ".",
                         "sql": {
-                            "b": "NOT " + sql_iso(not_expr.term.to_sql(schema)[0].sql.b)
+                            "b": "NOT " + sql_iso(not_expr.term.to_bq(schema)[0].sql.b)
                         },
                     }
                 ]
             )
         else:
-            return not_expr.to_sql(schema)
+            return not_expr.to_bq(schema)

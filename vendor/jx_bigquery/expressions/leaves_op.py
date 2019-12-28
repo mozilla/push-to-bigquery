@@ -20,7 +20,7 @@ from mo_logs import Log
 
 class LeavesOp(LeavesOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_bq(self, schema, not_null=False, boolean=False):
         if not is_op(self.term, Variable):
             Log.error("Can only handle Variable")
         term = self.term.var
@@ -31,7 +31,7 @@ class LeavesOp(LeavesOp_):
                     "name": join_field(
                         split_field(schema.get_column_name(c))[prefix_length:]
                     ),
-                    "sql": Variable(schema.get_column_name(c)).to_sql(schema)[0].sql,
+                    "sql": Variable(schema.get_column_name(c)).to_bq(schema)[0].sql,
                 }
                 for c in schema.columns
                 if startswith_field(c.name, term)

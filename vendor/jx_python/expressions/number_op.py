@@ -40,4 +40,4 @@ class NumberOp(NumberOp_):
                 )
 
 
-_utils.NumperOp = NumberOp
+_utils.NumberOp = NumberOp

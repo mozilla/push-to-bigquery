@@ -17,6 +17,6 @@ from pyLibrary.sql import sql_iso
 
 class UnixOp(UnixOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        v = self.value.to_sql(schema)[0].sql
+    def to_bq(self, schema, not_null=False, boolean=False):
+        v = self.value.to_bq(schema)[0].sql
         return wrap([{"name": ".", "sql": {"n": "UNIX_TIMESTAMP" + sql_iso(v.n)}}])

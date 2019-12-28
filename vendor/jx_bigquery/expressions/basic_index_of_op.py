@@ -18,9 +18,9 @@ from pyLibrary.sql import SQL_CASE, SQL_ELSE, SQL_END, SQL_THEN, SQL_WHEN, sql_i
 
 class BasicIndexOfOp(BasicIndexOfOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = self.value.to_sql(schema)[0].sql.s
-        find = self.find.to_sql(schema)[0].sql.s
+    def to_bq(self, schema, not_null=False, boolean=False):
+        value = self.value.to_bq(schema)[0].sql.s
+        find = self.find.to_bq(schema)[0].sql.s
         start = self.start
 
         if isinstance(start, Literal) and start.value == 0:
@@ -33,7 +33,7 @@ class BasicIndexOfOp(BasicIndexOfOp_):
                 ]
             )
         else:
-            start_index = start.to_sql(schema)[0].sql.n
+            start_index = start.to_bq(schema)[0].sql.n
             found = "INSTR(SUBSTR" + sql_iso(value + "," + start_index + "+1)," + find)
             return wrap(
                 [

@@ -9,8 +9,9 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import BasicStartsWithOp as BasicStartsWithOp_, ONE, is_literal
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_base.expressions import BasicStartsWithOp as BasicStartsWithOp_, ONE
+from jx_base.expressions.literal import is_literal
+from jx_bigquery.expressions._utils import BQLang, check
 from jx_bigquery.expressions.length_op import LengthOp
 from jx_bigquery.expressions.sql_eq_op import SqlEqOp
 from jx_bigquery.expressions.sql_substr_op import SqlSubstrOp
@@ -20,11 +21,11 @@ from pyLibrary.sql import SQL, ConcatSQL, SQL_LIKE, SQL_ESCAPE
 
 class BasicStartsWithOp(BasicStartsWithOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        prefix = SQLang[self.prefix].partial_eval()
+    def to_bq(self, schema, not_null=False, boolean=False):
+        prefix = BQLang[self.prefix].partial_eval()
         if is_literal(prefix):
-            value = SQLang[self.value].partial_eval().to_sql(schema)[0].sql.s
-            prefix = prefix.to_sql(schema)[0].sql.s
+            value = BQLang[self.value].partial_eval().to_bq(schema)[0].sql.s
+            prefix = prefix.to_bq(schema)[0].sql.s
             if "%" in prefix or "_" in prefix:
                 for r in "\\_%":
                     prefix = prefix.replaceAll(r, "\\" + r)
@@ -36,5 +37,5 @@ class BasicStartsWithOp(BasicStartsWithOp_):
             return (
                 SqlEqOp([SqlSubstrOp([self.value, ONE, LengthOp(prefix)]), prefix])
                 .partial_eval()
-                .to_sql()
+                .to_bq()
             )

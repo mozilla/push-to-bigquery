@@ -10,15 +10,16 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import NumberOp as NumberOp_
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_bigquery.expressions import _utils
+from jx_bigquery.expressions._utils import BQLang, check
 from mo_dots import wrap
 from pyLibrary.sql import sql_coalesce
 
 
 class NumberOp(NumberOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = SQLang[self.term].to_sql(schema, not_null=True)
+    def to_bq(self, schema, not_null=False, boolean=False):
+        value = BQLang[self.term].to_bq(schema, not_null=True)
         acc = []
         for c in value:
             for t, v in c.sql.items():
@@ -33,3 +34,6 @@ class NumberOp(NumberOp_):
             return wrap([{"name": ".", "sql": {"n": acc[0]}}])
         else:
             return wrap([{"name": ".", "sql": {"n": sql_coalesce(acc)}}])
+
+
+_utils.NumberOp = NumberOp

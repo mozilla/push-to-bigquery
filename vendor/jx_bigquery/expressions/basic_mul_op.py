@@ -10,8 +10,8 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import BasicMulOp as BasicMulOp_
-from jx_bigquery.expressions._utils import basic_multiop_to_sql
+from jx_bigquery.expressions._utils import basic_multiop_to_bq
 
 
 class BasicMulOp(BasicMulOp_):
-    to_sql = basic_multiop_to_sql
+    to_bq = basic_multiop_to_bq

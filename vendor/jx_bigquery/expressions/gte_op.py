@@ -10,8 +10,8 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import GteOp as GteOp_
-from jx_bigquery.expressions._utils import _inequality_to_sql
+from jx_bigquery.expressions._utils import _inequality_to_bq
 
 
 class GteOp(GteOp_):
-    to_sql = _inequality_to_sql
+    to_bq = _inequality_to_bq

@@ -9,8 +9,9 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import FALSE, SqlEqOp as SqlEqOp_, is_literal
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_base.expressions import FALSE, SqlEqOp as SqlEqOp_
+from jx_base.expressions.literal import is_literal
+from jx_bigquery.expressions._utils import BQLang, check
 from jx_bigquery.expressions.boolean_op import BooleanOp
 from mo_dots import wrap
 from mo_logs import Log
@@ -19,15 +20,15 @@ from pyLibrary.sql import SQL_IS_NULL, SQL_OR, sql_iso, ConcatSQL, JoinSQL, SQL_
 
 class SqlEqOp(SqlEqOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = SQLang[self.lhs].partial_eval()
-        rhs = SQLang[self.rhs].partial_eval()
-        lhs_sql = lhs.to_sql(schema, not_null=True)
-        rhs_sql = rhs.to_sql(schema, not_null=True)
+    def to_bq(self, schema, not_null=False, boolean=False):
+        lhs = BQLang[self.lhs].partial_eval()
+        rhs = BQLang[self.rhs].partial_eval()
+        lhs_sql = lhs.to_bq(schema, not_null=True)
+        rhs_sql = rhs.to_bq(schema, not_null=True)
         if is_literal(rhs) and lhs_sql[0].sql.b != None and rhs.value in ("T", "F"):
-            rhs_sql = BooleanOp(rhs).to_sql(schema)
+            rhs_sql = BooleanOp(rhs).to_bq(schema)
         if is_literal(lhs) and rhs_sql[0].sql.b != None and lhs.value in ("T", "F"):
-            lhs_sql = BooleanOp(lhs).to_sql(schema)
+            lhs_sql = BooleanOp(lhs).to_bq(schema)
 
         if len(lhs_sql) != len(rhs_sql):
             Log.error("lhs and rhs have different dimensionality!?")
@@ -47,6 +48,6 @@ class SqlEqOp(SqlEqOp_):
                         ConcatSQL((sql_iso(l.sql[t]), SQL_EQ, sql_iso(r.sql[t])))
                     )
         if not acc:
-            return FALSE.to_sql(schema)
+            return FALSE.to_bq(schema)
         else:
             return wrap([{"name": ".", "sql": {"b": JoinSQL(SQL_OR, acc)}}])

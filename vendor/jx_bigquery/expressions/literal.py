@@ -20,7 +20,7 @@ from mo_math import is_number
 
 class Literal(Literal_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_bq(self, schema, not_null=False, boolean=False):
         value = self.value
         if value == None:
             return wrap([{"name": "."}])

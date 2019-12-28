@@ -12,7 +12,7 @@ from __future__ import absolute_import, division, unicode_literals
 from pyLibrary.sql.sqlite import quote_value
 
 from jx_base.expressions import StringOp as StringOp_
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_bigquery.expressions._utils import BQLang, check
 from mo_dots import wrap
 from pyLibrary.sql import (
     SQL_CASE,
@@ -28,9 +28,9 @@ from pyLibrary.sql import (
 
 class StringOp(StringOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        test = SQLang[self.term].missing().to_sql(schema, boolean=True)[0].sql.b
-        value = SQLang[self.term].to_sql(schema, not_null=True)[0].sql
+    def to_bq(self, schema, not_null=False, boolean=False):
+        test = BQLang[self.term].missing().to_bq(schema, boolean=True)[0].sql.b
+        value = BQLang[self.term].to_bq(schema, not_null=True)[0].sql
         acc = []
         for t, v in value.items():
             if t == "b":

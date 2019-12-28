@@ -10,7 +10,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import FloorOp as FloorOp_
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_bigquery.expressions._utils import BQLang, check
 from mo_dots import wrap
 from mo_future import text
 from pyLibrary.sql import sql_iso
@@ -18,9 +18,9 @@ from pyLibrary.sql import sql_iso
 
 class FloorOp(FloorOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = SQLang[self.lhs].to_sql(schema)[0].sql.n
-        rhs = SQLang[self.rhs].to_sql(schema)[0].sql.n
+    def to_bq(self, schema, not_null=False, boolean=False):
+        lhs = BQLang[self.lhs].to_bq(schema)[0].sql.n
+        rhs = BQLang[self.rhs].to_bq(schema)[0].sql.n
         modifier = lhs + " < 0 "
 
         if text(rhs).strip() != "1":

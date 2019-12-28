@@ -12,16 +12,23 @@
             },
             "dataset": "treeherder",
             "table": "jobs",
+            "top_level_fields": {
+                "job.id": "_job_id",
+                "last_modified": "_last_modified",
+                "action.request_time": "_request_time"
+            },
             "partition": {
                 "field": "action.request_time",
                 "expire": "2year"
             },
-            "schema": {},
             "id":{
                 "field": "job.id",
-                "version": "last_updated"
+                "version": "last_modified"
             },
-            "cluster": "job.id",
+            "cluster": [
+                "job.id",
+                "last_modified"
+            ],
             "sharded": true
         }
     },

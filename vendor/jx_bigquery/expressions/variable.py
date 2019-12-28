@@ -9,12 +9,12 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from jx_sqlite import GUID, quoted_GUID
 from pyLibrary.sql.sqlite import quote_column
 
 from jx_base.expressions import Variable as Variable_
 from jx_base.queries import get_property_name
-from jx_bigquery import GUID, quoted_GUID
-from jx_bigquery.expressions._utils import json_type_to_sql_type, check
+from jx_bigquery.expressions._utils import json_type_to_bq_type, check
 from mo_dots import ROOT_PATH, relative_field, wrap
 from mo_json import BOOLEAN, OBJECT
 from pyLibrary.sql import SQL_IS_NOT_NULL, SQL_NULL, SQL_TRUE
@@ -22,7 +22,7 @@ from pyLibrary.sql import SQL_IS_NOT_NULL, SQL_NULL, SQL_TRUE
 
 class Variable(Variable_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False, many=True):
+    def to_bq(self, schema, not_null=False, boolean=False, many=True):
         var_name = self.var
         if var_name == GUID:
             return wrap(
@@ -58,14 +58,14 @@ class Variable(Variable_):
                             for child_col in cs:
                                 tempa = acc.setdefault(child_col.nested_path[0], {})
                                 tempb = tempa.setdefault(get_property_name(cname), {})
-                                tempb[json_type_to_sql_type[col.type]] = quote_column(
+                                tempb[json_type_to_bq_type[col.type]] = quote_column(
                                     child_col.es_column
                                 )
                 else:
                     nested_path = col.nested_path[0]
                     tempa = acc.setdefault(nested_path, {})
                     tempb = tempa.setdefault(get_property_name(cname), {})
-                    tempb[json_type_to_sql_type[col.jx_type]] = quote_column(
+                    tempb[json_type_to_bq_type[col.jx_type]] = quote_column(
                         col.es_column
                     )
 

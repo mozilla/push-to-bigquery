@@ -1,11 +1,17 @@
+import operator
 import re
 from collections import OrderedDict
 
+import jx_base
 from google.cloud import bigquery
 from google.cloud.bigquery import TimePartitioning
 from google.oauth2 import service_account
 
 from jx_base import jx_expression, Container, Facts
+from jx_bigquery import snowflakes
+from jx_bigquery.expressions import BQLang
+from jx_bigquery.partitions import Partition
+from jx_bigquery.snowflakes import Snowflake
 from jx_bigquery.sql import (
     quote_column,
     unescape_name,
@@ -16,19 +22,27 @@ from jx_bigquery.sql import (
     ApiName,
 )
 from jx_bigquery.typed_encoder import (
-    schema_to_bq_schema,
     bq_type_to_json_type,
     NESTED_TYPE,
     typed_encode,
-    PARTITION_FIELD,
-    BQ_PARITITION_FIELD,
     typed_to_bq_type,
     REPEATED,
     json_type_to_bq_type,
 )
 from jx_python import jx
-from mo_dots import listwrap, unwrap, split_field, join_field, Null, unwraplist, is_data
-from mo_future import is_text, text, first
+from mo_dots import (
+    listwrap,
+    unwrap,
+    split_field,
+    join_field,
+    Null,
+    unwraplist,
+    is_data,
+    wrap,
+    startswith_field,
+)
+from mo_future import is_text, text, reduce
+from mo_json import NESTED, STRUCT
 from mo_kwargs import override
 from mo_logs import Log, Except
 from mo_math.randoms import Random
@@ -49,53 +63,14 @@ from pyLibrary.sql import (
     SQL_SELECT_AS_STRUCT,
     SQL_INSERT,
     SQL_STAR,
-    SQL_CREATE,
     SQL_DESC,
 )
 
 EXTEND_LIMIT = 2 * MINUTE  # EMIT ERROR IF ADDING RECORDS TO TABLE TOO OFTEN
-NEVER = 10 * YEAR
 
 SUFFIX_PATTERN = re.compile(r"__\w{20}")
 
 
-class Partition(object):
-    """
-    DESCRIBE HOW TO PARTITION TABLE
-    """
-
-    __slots__ = ["field", "interval", "expire"]
-
-    @override
-    def __new__(cls, field=None, interval=DAY, expire=NEVER, kwargs=None):
-        if field == None:
-            return Null
-        return object.__new__(cls)
-
-    @override
-    def __init__(self, field, interval=DAY, expire=NEVER, kwargs=None):
-        self.field = jx_expression(field)
-        self.interval = Duration(interval)
-        self.expire = Duration(expire)
-        if not isinstance(self.interval, Duration) or not isinstance(
-            self.expire, Duration
-        ):
-            Log.error("expecting durations")
-
-    def add_partition(self, row):
-        """
-        MARKUP row WITH _partition VALUE
-        """
-        timestamp = self.field(row)
-        row[PARTITION_FIELD] = Date(timestamp).format()
-
-    @property
-    def bq_time_partitioning(self):
-        return TimePartitioning(
-            type_=bigquery.TimePartitioningType.DAY,
-            field=str(escape_name(PARTITION_FIELD)),
-            expiration_ms=int(self.expire.milli),
-        )
 
 
 class Dataset(Container):
@@ -133,13 +108,15 @@ class Dataset(Container):
         sharded=False,
         partition=None,
         cluster=None,  # TUPLE OF FIELDS TO SORT DATA
+        id=None,
         kwargs=None,
     ):
         try:
             return Table(
                 container=self,
-                partition=Partition(partition),
+                partition=partition,
                 cluster=cluster,
+                id=id,
                 kwargs=kwargs,
             )
         except Exception as e:
@@ -182,9 +159,10 @@ class Dataset(Container):
         sharded=False,
         partition=None,  # PARTITION RULES
         cluster=None,  # TUPLE OF FIELDS TO SORT DATA
+        top_level_fields= None,
         kwargs=None,
     ):
-        partition = Partition(partition)
+        partition = Partition(kwargs=partition, schema=schema)
 
         if read_only:
             Log.error("Can not create a table for read-only use")
@@ -195,7 +173,7 @@ class Dataset(Container):
             shard_api_name = self.full_name + shard_name
             _shard = bigquery.Table(
                 str(shard_api_name),
-                schema=BQ_PARITITION_FIELD + schema_to_bq_schema(schema),
+                schema=schema.to_bq_schema(),
             )
             _shard.time_partitioning = unwrap(partition.bq_time_partitioning)
             _shard.clustering_fields = unwrap(
@@ -220,17 +198,14 @@ class Dataset(Container):
             api_name = escape_name(table)
             full_name = self.full_name + api_name
             _table = bigquery.Table(
-                str(full_name), schema=BQ_PARITITION_FIELD + schema_to_bq_schema(schema)
+                str(full_name), schema=schema.to_bq_schema()
             )
             _table.time_partitioning = unwrap(partition.bq_time_partitioning)
-            _table.clustering_fields = unwrap(
-                unwraplist(
-                    [
-                        join_field(escape_name(p) for p in split_field(f))
-                        for f in listwrap(cluster)
-                    ]
-                )
-            )
+            _table.clustering_fields = [
+                l.es_column
+                for f in listwrap(cluster)
+                for l in schema.leaves(f)
+            ]
             self.client.create_table(_table)
             Log.note("created table {{table}}", table=_table.table_id)
 
@@ -240,6 +215,7 @@ class Dataset(Container):
             read_only=read_only,
             sharded=sharded,
             partition=partition,
+            top_level_fields=top_level_fields,
             kwargs=kwargs,
             container=self,
         )
@@ -248,14 +224,27 @@ class Dataset(Container):
 class Table(Facts):
     @override
     def __init__(
-        self, table, typed, read_only, sharded, partition, cluster, id, container
+        self,
+        table,
+        typed,
+        read_only,
+        sharded,
+        container,
+        id=Null,
+        partition=Null,
+        cluster=Null,
+        top_level_fields = Null,
+        kwargs=None,
     ):
-        esc_name = escape_name(table)
-        self.full_name = container.full_name + esc_name
         self.short_name = table
         self.typed = typed
         self.read_only = read_only
+        self.cluster = cluster
+        self.id = id
+        self.top_level_fields = top_level_fields
 
+        esc_name = escape_name(table)
+        self.full_name = container.full_name + esc_name
         alias_view = container.client.get_table(str(self.full_name))
         if not sharded:
             if not read_only and alias_view.table_type == "VIEW":
@@ -265,10 +254,8 @@ class Table(Facts):
             if alias_view.table_type != "VIEW":
                 Log.error("Sharded tables require a view")
             self.shard = None
+        self._schema = Snowflake.parse(alias_view.schema, self.full_name, self.top_level_fields, partition)
         self.partition = partition
-        self.cluster = cluster
-        self.id = id
-        self._schema = parse_schema(alias_view.schema)
         self.container = container
         self.last_extend = Date.now() - EXTEND_LIMIT
 
@@ -278,10 +265,14 @@ class Table(Facts):
 
     def _create_new_shard(self):
         primary_shard = self.container.create_table(
-            self.short_name + "_" + "".join(Random.sample(ALLOWED, 20)),
+            table=self.short_name + "_" + "".join(Random.sample(ALLOWED, 20)),
             typed=self.typed,
             read_only=False,
             sharded=False,
+            partition=self.partition,
+            cluster=self.cluster,
+            top_level_fields=self.top_level_fields,
+            id=self.id,
             schema=self._schema,
         )
         self.shard = primary_shard.shard
@@ -300,9 +291,6 @@ class Table(Facts):
                         # row HAS NEW NESTED COLUMN!
                         # GO OVER THE rows AGAIN SO "RECORD" GET MAPPED TO "REPEATED"
                         break
-                    typed[str(escape_name(PARTITION_FIELD))] = Date(
-                        self.partition.field(row)
-                    ).format()
                     update.update(more)
                     output.append(typed)
                 else:
@@ -358,12 +346,17 @@ class Table(Facts):
                 "expecting {{table}} to be a view pointing to a table", table=api_name
             )
 
-        shard_schemas = [parse_schema(shard.schema) for shard in shards]
-        total_schema = merge_schema(*shard_schemas)
+        shard_schemas = [
+            Snowflake.parse(
+                shard.schema, self.container.full_name + ApiName(shard.table_id)
+            )
+            for shard in shards
+        ]
+        total_schema = snowflakes.merge(*shard_schemas)
 
         for i, s in enumerate(shards):
             if ApiName(s.table_id) == primary_shard_name:
-                if identical_schema(total_schema, shard_schemas[i]):
+                if total_schema == shard_schemas[i]:
                     del shards[i]
                     del shard_schemas[i]
                     break
@@ -383,8 +376,6 @@ class Table(Facts):
             q = ConcatSQL(
                 (
                     SQL_SELECT,
-                    quote_column(escape_name(PARTITION_FIELD)),
-                    SQL_COMMA,
                     JoinSQL(
                         ConcatSQL((SQL_COMMA, SQL_CR)),
                         gen_select([], total_schema, schema),
@@ -461,7 +452,7 @@ class Table(Facts):
             ConcatSQL(
                 (
                     SQL(
-                        "SELECT * EXCEPT(_rank) FROM (SELECT *, RANK() OVER (PARTITION BY "
+                        "SELECT * EXCEPT (_rank) FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY "
                     ),
                     partition,
                     SQL_ORDERBY,
@@ -476,7 +467,7 @@ class Table(Facts):
 
 def gen_select(full_path, total_schema, schema):
 
-    if identical_schema(total_schema, schema):
+    if total_schema == schema:
         if not full_path:
             return [quote_column(escape_name(k)) for k in total_schema.keys()]
         else:
@@ -587,54 +578,3 @@ def gen_select(full_path, total_schema, schema):
             Log.error("not expected")
     return selection
 
-
-def parse_schema(schema, depth=0):
-    """
-    PARSE A BIGQUERY SCHEMA
-    :param schema: bq schema
-    :return:
-    """
-    output = OrderedDict()
-
-    if any(ApiName(e.name) == REPEATED for e in schema):
-        schema = [e for e in schema if ApiName(e.name) == REPEATED]
-    for e in schema:
-        if (
-            not depth
-            and e.name.startswith("_")
-            and unescape_name(ApiName(e.name)) not in typed_to_bq_type
-        ):
-            continue
-        json_type = bq_type_to_json_type[e.field_type]
-        name = unescape_name(ApiName(e.name))
-        if e.field_type == "RECORD":
-            output[name] = parse_schema(e.fields)
-        else:
-            output[name] = json_type
-    return output
-
-
-def identical_schema(a, b):
-    if is_text(b):
-        return a == b
-    if len(a.keys()) != len(b.keys()):
-        return False
-    for (ka, va), (kb, vb) in zip(a.items(), b.items()):
-        # WARNING!  ASSUMES dicts ARE OrderedDict
-        if ka != kb or not identical_schema(va, vb):
-            return False
-    return True
-
-
-def merge_schema(*schemas):
-    try:
-        return OrderedDict(
-            (k, merge_schema(*[ss for s in schemas for ss in [s.get(k)] if ss]))
-            for k in jx.sort(set(k for s in schemas for k in s.keys()))
-        )
-    except Exception:
-        t = list(set(schemas))
-        if len(t) == 1:
-            return t[0]
-        else:
-            Log.error("Expecting types to match {{types|json}}", types=schemas)

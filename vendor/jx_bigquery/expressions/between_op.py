@@ -15,5 +15,5 @@ from jx_bigquery.expressions._utils import check
 
 class BetweenOp(BetweenOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        return self.partial_eval().to_sql(schema)
+    def to_bq(self, schema, not_null=False, boolean=False):
+        return self.partial_eval().to_bq(schema)

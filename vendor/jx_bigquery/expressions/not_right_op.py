@@ -17,9 +17,9 @@ from pyLibrary.sql import sql_iso
 
 class NotRightOp(NotRightOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        v = self.value.to_sql(schema, not_null=True)[0].sql.s
-        r = self.length.to_sql(schema, not_null=True)[0].sql.n
+    def to_bq(self, schema, not_null=False, boolean=False):
+        v = self.value.to_bq(schema, not_null=True)[0].sql.s
+        r = self.length.to_bq(schema, not_null=True)[0].sql.n
         l = "max(0, length" + sql_iso(v) + "-max(0, " + r + "))"
         expr = "SUBSTR" + sql_iso(v + ", 1, " + l)
         return wrap([{"name": ".", "sql": {"s": expr}}])

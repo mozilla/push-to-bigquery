@@ -10,13 +10,13 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import MaxOp as MaxOp_
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_bigquery.expressions._utils import BQLang, check
 from mo_dots import wrap
 from pyLibrary.sql import sql_iso, sql_list
 
 
 class MaxOp(MaxOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        terms = [SQLang[t].partial_eval().to_sql(schema)[0].sql.n for t in self.terms]
+    def to_bq(self, schema, not_null=False, boolean=False):
+        terms = [BQLang[t].partial_eval().to_bq(schema)[0].sql.n for t in self.terms]
         return wrap([{"name": ".", "sql": {"n": "max" + sql_iso((sql_list(terms)))}}])

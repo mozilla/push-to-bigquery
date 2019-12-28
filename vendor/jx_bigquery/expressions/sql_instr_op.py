@@ -11,16 +11,15 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import SqlInstrOp as SqlInstrOp_
 from jx_bigquery.expressions._utils import check
-from jx_bigquery.expressions.sql_instr_op import SqlInstrOp
 from mo_dots import wrap
 from pyLibrary.sql import sql_iso, sql_list
 
 
 class SqlInstrOp(SqlInstrOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = self.value.to_sql(schema, not_null=True)[0].sql.s
-        find = self.find.to_sql(schema, not_null=True)[0].sql.s
+    def to_bq(self, schema, not_null=False, boolean=False):
+        value = self.value.to_bq(schema, not_null=True)[0].sql.s
+        find = self.find.to_bq(schema, not_null=True)[0].sql.s
 
         return wrap(
             [{"name": ".", "sql": {"n": "INSTR" + sql_iso(sql_list([value, find]))}}]

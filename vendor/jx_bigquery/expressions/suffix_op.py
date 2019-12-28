@@ -21,7 +21,7 @@ from pyLibrary.sql import SQL_FALSE, SQL_TRUE
 
 class SuffixOp(SuffixOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_bq(self, schema, not_null=False, boolean=False):
         if not self.expr:
             return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
         elif isinstance(self.suffix, Literal) and not self.suffix.value:
@@ -30,5 +30,5 @@ class SuffixOp(SuffixOp_):
             return (
                 EqOp([RightOp([self.expr, LengthOp(self.suffix)]), self.suffix])
                 .partial_eval()
-                .to_sql(schema)
+                .to_bq(schema)
             )

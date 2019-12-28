@@ -18,13 +18,13 @@ from pyLibrary.sql import sql_iso, sql_list
 
 class SqlSubstrOp(SqlSubstrOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = self.value.to_sql(schema, not_null=True)[0].sql.s
-        start = self.start.to_sql(schema, not_null=True)[0].sql.n
+    def to_bq(self, schema, not_null=False, boolean=False):
+        value = self.value.to_bq(schema, not_null=True)[0].sql.s
+        start = self.start.to_bq(schema, not_null=True)[0].sql.n
         if self.length is NULL:
             sql = "SUBSTR" + sql_iso(sql_list([value, start]))
         else:
-            length = self.length.to_sql(schema, not_null=True)[0].sql.n
+            length = self.length.to_bq(schema, not_null=True)[0].sql.n
             sql = "SUBSTR" + sql_iso(sql_list([value, start, length]))
         return wrap([{"name": ".", "sql": sql}])
 

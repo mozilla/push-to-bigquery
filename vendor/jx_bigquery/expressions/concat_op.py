@@ -10,9 +10,9 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import ConcatOp as ConcatOp_, TrueOp
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_bigquery.expressions._utils import BQLang, check
 from jx_bigquery.expressions.length_op import LengthOp
-from jx_bigquery.expressions.sql_script import SQLScript
+from jx_bigquery.expressions.bql_script import BQLScript
 from mo_dots import coalesce
 from mo_json import STRING
 from pyLibrary.sql import (
@@ -33,19 +33,19 @@ from pyLibrary.sql.mysql import quote_value
 
 class ConcatOp(ConcatOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        default = self.default.to_sql(schema)
+    def to_bq(self, schema, not_null=False, boolean=False):
+        default = self.default.to_bq(schema)
         if len(self.terms) == 0:
             return default
         default = coalesce(default[0].sql.s, SQL_NULL)
-        sep = SQLang[self.separator].to_sql(schema)[0].sql.s
+        sep = BQLang[self.separator].to_bq(schema)[0].sql.s
 
         acc = []
         for t in self.terms:
-            t = SQLang[t]
+            t = BQLang[t]
             missing = t.missing().partial_eval()
 
-            term = t.to_sql(schema, not_null=True)[0].sql
+            term = t.to_bq(schema, not_null=True)[0].sql
             if term.s:
                 term_sql = term.s
             elif term.n:
@@ -68,7 +68,7 @@ class ConcatOp(ConcatOp_):
                 acc.append(
                     SQL_CASE
                     + SQL_WHEN
-                    + sql_iso(missing.to_sql(schema, boolean=True)[0].sql.b)
+                    + sql_iso(missing.to_bq(schema, boolean=True)[0].sql.b)
                     + SQL_THEN
                     + SQL_EMPTY_STRING
                     + SQL_ELSE
@@ -82,12 +82,12 @@ class ConcatOp(ConcatOp_):
             sql_list(
                 [
                     sql_concat_text(acc),
-                    LengthOp(self.separator).to_sql(schema)[0].sql.n + SQL("+1"),
+                    LengthOp(self.separator).to_bq(schema)[0].sql.n + SQL("+1"),
                 ]
             )
         )
 
-        return SQLScript(
+        return BQLScript(
             expr=expr_,
             data_type=STRING,
             frum=self,

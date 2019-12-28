@@ -17,5 +17,5 @@ from pyLibrary.sql.mysql import quote_value
 
 class DateOp(DateOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_bq(self, schema, not_null=False, boolean=False):
         return wrap([{"name": ".", "sql": {"n": quote_value(self.value)}}])

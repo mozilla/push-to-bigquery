@@ -17,10 +17,10 @@ from pyLibrary.sql import SQL_CASE, SQL_ELSE, SQL_END, SQL_NULL, SQL_THEN, SQL_W
 
 class RangeOp(RangeOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        when = self.when.to_sql(schema, boolean=True)[0].sql
-        then = self.then.to_sql(schema, not_null=not_null)[0].sql
-        els_ = self.els_.to_sql(schema, not_null=not_null)[0].sql
+    def to_bq(self, schema, not_null=False, boolean=False):
+        when = self.when.to_bq(schema, boolean=True)[0].sql
+        then = self.then.to_bq(schema, not_null=not_null)[0].sql
+        els_ = self.els_.to_bq(schema, not_null=not_null)[0].sql
         output = {}
         for t in "bsn":
             if then[t] == None:

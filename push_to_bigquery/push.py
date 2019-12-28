@@ -36,26 +36,26 @@ def push(config):
 
     container = bigquery.Dataset(config.destination)
 
-    index = container.get_or_create_table("testing", sharded=True)
+    # index = container.get_or_create_table("testing", sharded=True)
 
-    index.merge_shards()
+    # index.merge_shards()
 
-    # index = container.create_or_replace_table(config.destination)
-    #
-    # base_url = "https://active-data-treeherder-normalized.s3-us-west-2.amazonaws.com/{{major}}.{{minor}}.json.gz"
-    # major = 1700
-    # minor = 165
-    # while True:
-    #     url = expand_template(base_url, {"major": major, "minor": minor})
-    #     try:
-    #         Log.note("add {{url}}", url=url)
-    #         data = zip2bytes(http.get(url, retry={"times": 3, "sleep": 2}).all_content)
-    #         index.extend(map(lambda l: json2value(l.decode('utf8')), data.split("\n")))
-    #         minor += 1
-    #     except Exception as e:
-    #         minor = 0
-    #         major += 1
-    #         Log.error("problem", cause=e)
+    index = container.get_or_create_table(config.destination)
+
+    base_url = "https://active-data-treeherder-normalized.s3-us-west-2.amazonaws.com/{{major}}.{{minor}}.json.gz"
+    major = 1700
+    minor = 165
+    while True:
+        url = expand_template(base_url, {"major": major, "minor": minor})
+        try:
+            Log.note("add {{url}}", url=url)
+            data = zip2bytes(http.get(url, retry={"times": 3, "sleep": 2}).all_content)
+            index.extend(map(lambda l: json2value(l.decode('utf8')), data.split("\n")))
+            minor += 1
+        except Exception as e:
+            minor = 0
+            major += 1
+            Log.error("problem", cause=e)
 
 
 def main():

@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import MissingOp as MissingOp_
 from jx_base.language import is_op
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_bigquery.expressions._utils import BQLang, check
 from mo_dots import wrap
 from pyLibrary.sql import (
     SQL_AND,
@@ -26,14 +26,14 @@ from pyLibrary.sql import (
 
 class MissingOp(MissingOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = SQLang[self.expr].partial_eval()
+    def to_bq(self, schema, not_null=False, boolean=False):
+        value = BQLang[self.expr].partial_eval()
         missing_value = value.missing().partial_eval()
 
         if not is_op(missing_value, MissingOp):
-            return missing_value.to_sql(schema)
+            return missing_value.to_bq(schema)
 
-        value_sql = value.to_sql(schema)
+        value_sql = value.to_bq(schema)
 
         if len(value_sql) > 1:
             return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])

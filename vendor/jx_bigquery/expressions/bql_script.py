@@ -5,12 +5,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
-#
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import FALSE, NULL, ONE, SQLScript as SQLScript_, TRUE, ZERO
-from jx_bigquery.expressions._utils import json_type_to_sql_type, SQLang, check
+from jx_bigquery.expressions import _utils
+from jx_bigquery.expressions._utils import json_type_to_bq_type, BQLang, check
 from mo_dots import coalesce, wrap
 from mo_future import PY2, text
 from mo_logs import Log
@@ -27,7 +26,7 @@ from pyLibrary.sql import (
 )
 
 
-class SQLScript(SQLScript_, SQL):
+class BQLScript(SQLScript_, SQL):
     __slots__ = ("miss", "data_type", "expr", "frum", "many", "schema")
 
     def __init__(self, data_type, expr, frum, miss=None, many=False, schema=None):
@@ -73,18 +72,18 @@ class SQLScript(SQLScript_, SQL):
     def sql(self):
         self.miss = self.miss.partial_eval()
         if self.miss is TRUE:
-            return wrap({json_type_to_sql_type[self.data_type]: SQL_NULL})
+            return wrap({json_type_to_bq_type[self.data_type]: SQL_NULL})
         elif self.miss is FALSE:
-            return wrap({json_type_to_sql_type[self.data_type]: self.expr})
+            return wrap({json_type_to_bq_type[self.data_type]: self.expr})
         else:
             return wrap(
                 {
-                    json_type_to_sql_type[self.data_type]: ConcatSQL(
+                    json_type_to_bq_type[self.data_type]: ConcatSQL(
                         (
                             SQL_CASE,
                             SQL_WHEN,
                             SQL_NOT,
-                            sql_iso(SQLang[self.miss].to_sql(self.schema)[0].sql.b),
+                            sql_iso(BQLang[self.miss].to_bq(self.schema)[0].sql.b),
                             SQL_THEN,
                             self.expr,
                             SQL_END,
@@ -109,7 +108,7 @@ class SQLScript(SQLScript_, SQL):
         __unicode__ = __str__
 
     @check
-    def to_sql(self, schema, not_null=False, boolean=False, many=True):
+    def to_bq(self, schema, not_null=False, boolean=False, many=True):
         return self
 
     def missing(self):
@@ -125,3 +124,6 @@ class SQLScript(SQLScript_, SQL):
             return True
         else:
             return False
+
+
+_utils.BQLScript = BQLScript

@@ -14,14 +14,14 @@ from jx_base.expressions import (
     FALSE,
     TRUE,
     ZERO,
-    builtin_ops,
     simplified,
 )
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_base.expressions._utils import builtin_ops
+from jx_bigquery.expressions._utils import BQLang, check
 from jx_bigquery.expressions.case_op import CaseOp
 from jx_bigquery.expressions.literal import Literal
 from jx_bigquery.expressions.sql_eq_op import SqlEqOp
-from jx_bigquery.expressions.sql_script import SQLScript
+from jx_bigquery.expressions.bql_script import BQLScript
 from jx_bigquery.expressions.when_op import WhenOp
 from mo_json import BOOLEAN
 from mo_logs import Log
@@ -30,9 +30,9 @@ from pyLibrary.sql import SQL_FALSE, SQL_IS_NULL, SQL_OR, sql_iso
 
 class EqOp(EqOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = SQLang[self.lhs].to_sql(schema)
-        rhs = SQLang[self.rhs].to_sql(schema)
+    def to_bq(self, schema, not_null=False, boolean=False):
+        lhs = BQLang[self.lhs].to_bq(schema)
+        rhs = BQLang[self.rhs].to_bq(schema)
         acc = []
         if len(lhs) != len(rhs):
             Log.error("lhs and rhs have different dimensionality!?")
@@ -61,9 +61,9 @@ class EqOp(EqOp_):
                     else:
                         acc.append(sql_iso(l.sql[t]) + " = " + sql_iso(r.sql[t]))
         if not acc:
-            return FALSE.to_sql(schema)
+            return FALSE.to_bq(schema)
         else:
-            return SQLScript(
+            return BQLScript(
                 expr=SQL_OR.join(acc),
                 frum=self,
                 data_type=BOOLEAN,

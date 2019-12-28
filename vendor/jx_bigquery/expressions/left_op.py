@@ -16,5 +16,5 @@ from jx_bigquery.expressions.sql_substr_op import SqlSubstrOp
 
 class LeftOp(LeftOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        return SqlSubstrOp([self.value, ONE, self.length]).partial_eval().to_sql(schema)
+    def to_bq(self, schema, not_null=False, boolean=False):
+        return SqlSubstrOp([self.value, ONE, self.length]).partial_eval().to_bq(schema)

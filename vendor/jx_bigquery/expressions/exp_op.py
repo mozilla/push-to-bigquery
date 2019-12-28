@@ -10,8 +10,8 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import ExpOp as ExpOp_
-from jx_bigquery.expressions._utils import _binaryop_to_sql
+from jx_bigquery.expressions._utils import _binaryop_to_bq
 
 
 class ExpOp(ExpOp_):
-    to_sql = _binaryop_to_sql
+    to_bq = _binaryop_to_bq

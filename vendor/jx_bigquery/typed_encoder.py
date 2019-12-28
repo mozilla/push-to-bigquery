@@ -1,11 +1,8 @@
 import string
 
-from google.cloud.bigquery import SchemaField
-
 from jx_bigquery.sql import escape_name
-from jx_python import jx
-from mo_dots import is_many, is_data
-from mo_future import is_text
+from mo_dots import is_many, is_data, Null, wrap
+from mo_future import is_text, first
 from mo_json import (
     BOOLEAN,
     NUMBER,
@@ -18,17 +15,33 @@ from mo_json import (
 from mo_logs import Log
 
 ALLOWED = string.ascii_letters + string.digits
-PARTITION_FIELD ="_partition"  # name of column to use for partitioning
-BQ_PARITITION_FIELD = [SchemaField(name=str(escape_name(PARTITION_FIELD)), field_type="TIMESTAMP", mode="NULLABLE")]
 
 
 def typed_encode(value, schema):
     """
     RETURN (typed_value, schema_update, added_nested) TUPLES
-    :param value:
-    :param schema:
-    :return:
+    :param value: THE RECORD TO CONVERT TO STRICT TYPED FORM
+    :param schema: LOOKUP SCHEMA, WILL BE UPDATED WITH CHANGES
+    :param top_level_fields: MAP TO TOP LEVEL FIELDS
+    :return: (record, update, nested) TUPLE
     """
+    output, update, nested = _typed_encode(value, schema.lookup)
+    if update:
+        # REFRESH COLUMNS
+        schema._columns = None
+        _ = schema.columns
+
+    worker = wrap(output)
+    for path, field in schema._top_level_fields.items():
+        worker[field] = worker[path]
+        worker[path] = None
+
+    schema._partition.apply(output)
+
+    return output, update, nested
+
+
+def _typed_encode(value, schema):
     if is_many(value):
         output = []
         update = {}
@@ -38,7 +51,7 @@ def typed_encode(value, schema):
             child_schema = schema[NESTED_TYPE] = {}
 
         for r in value:
-            v, m, n = typed_encode(r, child_schema)
+            v, m, n = _typed_encode(r, child_schema)
             output.append(v)
             update.update(m)
             nest_added |= n
@@ -51,7 +64,7 @@ def typed_encode(value, schema):
         if not value:
             return {str(REPEATED): []}, None, False
         else:
-            return typed_encode([value], schema)
+            return _typed_encode([value], schema)
     elif is_data(value):
         output = {}
         update = {}
@@ -60,7 +73,7 @@ def typed_encode(value, schema):
             child_schema = schema.get(k)
             if not child_schema:
                 child_schema = schema[k] = {}
-            result, more_update, n = typed_encode(v, child_schema)
+            result, more_update, n = _typed_encode(v, child_schema)
             output[str(escape_name(k))] = result
             if more_update:
                 update.update({k: more_update})
@@ -92,34 +105,6 @@ def schema_type(value):
     return json_type_to_inserter_type[jt], jt
 
 
-def schema_to_bq_schema(schema):
-    if not schema:
-        return []
-    output = _schema_to_bq_schema(schema)
-    return output
-
-
-def _schema_to_bq_schema(schema):
-    output = []
-    nt = schema.get(NESTED_TYPE)
-    if nt:
-        schema = {NESTED_TYPE: nt}
-    for t, sub_schema in jx.sort(schema.items(), 0):
-        bqt = typed_to_bq_type.get(t, {"field_type": "RECORD", "mode": "NULLABLE"})
-        if is_text(sub_schema):
-            new_field_type = json_type_to_bq_type.get(sub_schema, sub_schema)
-            if new_field_type != bqt["field_type"]:
-                # OVERRIDE TYPE
-                bqt = bqt.copy()
-                bqt['field_type'] = new_field_type
-            fields = ()
-        else:
-            fields = _schema_to_bq_schema(sub_schema)
-        struct = SchemaField(name=str(escape_name(t)), fields=fields, **bqt)
-        output.append(struct)
-    return output
-
-
 json_type_to_bq_type = {
     BOOLEAN: "BOOLEAN",
     NUMBER: "NUMERIC",
@@ -137,7 +122,7 @@ bq_type_to_json_type = {
     "DATE": NUMBER,
     "DATETIME": STRING,
     "TIME": STRING,
-    "TIMESTAMP": STRING,
+    "TIMESTAMP": NUMBER,
     "RECORD": OBJECT,
 }
 

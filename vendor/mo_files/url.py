@@ -110,8 +110,10 @@ def int2hex(value, size):
 
 
 def hex2chr(hex):
-    return unichr(int(hex, 16))
-
+    try:
+        return unichr(int(hex, 16))
+    except Exception as e:
+        raise e
 
 if PY2:
     _map2url = {chr(i): chr(i) for i in range(32, 128)}

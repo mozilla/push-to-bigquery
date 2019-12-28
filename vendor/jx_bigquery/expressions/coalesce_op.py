@@ -10,18 +10,18 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import CoalesceOp as CoalesceOp_
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_bigquery.expressions._utils import BQLang, check
 from mo_dots import wrap
 from pyLibrary.sql import sql_coalesce
 
 
 class CoalesceOp(CoalesceOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_bq(self, schema, not_null=False, boolean=False):
         acc = {"b": [], "s": [], "n": []}
 
         for term in self.terms:
-            for t, v in SQLang[term].to_sql(schema)[0].sql.items():
+            for t, v in BQLang[term].to_bq(schema)[0].sql.items():
                 acc[t].append(v)
 
         output = {}

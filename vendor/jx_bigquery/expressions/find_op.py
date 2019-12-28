@@ -10,7 +10,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import FindOp as FindOp_, ZERO, simplified
-from jx_bigquery.expressions._utils import SQLang, check
+from jx_bigquery.expressions._utils import BQLang, check
 from jx_bigquery.expressions.and_op import AndOp
 from jx_bigquery.expressions.eq_op import EqOp
 from jx_bigquery.expressions.not_left_op import NotLeftOp
@@ -36,24 +36,24 @@ class FindOp(FindOp_):
     @simplified
     def partial_eval(self):
         return FindOp(
-            [SQLang[self.value].partial_eval(), SQLang[self.find].partial_eval()],
+            [BQLang[self.value].partial_eval(), BQLang[self.find].partial_eval()],
             **{
-                "start": SQLang[self.start].partial_eval(),
-                "default": SQLang[self.default].partial_eval(),
+                "start": BQLang[self.start].partial_eval(),
+                "default": BQLang[self.default].partial_eval(),
             }
         )
 
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = SQLang[self.value].partial_eval().to_sql(schema)[0].sql.s
-        find = SQLang[self.find].partial_eval().to_sql(schema)[0].sql.s
-        start = SQLang[self.start].partial_eval().to_sql(schema)[0].sql.n
+    def to_bq(self, schema, not_null=False, boolean=False):
+        value = BQLang[self.value].partial_eval().to_bq(schema)[0].sql.s
+        find = BQLang[self.find].partial_eval().to_bq(schema)[0].sql.s
+        start = BQLang[self.start].partial_eval().to_bq(schema)[0].sql.n
         default = coalesce(
-            SQLang[self.default].partial_eval().to_sql(schema)[0].sql.n, SQL_NULL
+            BQLang[self.default].partial_eval().to_bq(schema)[0].sql.n, SQL_NULL
         )
 
         if start.sql != SQL_ZERO.sql.strip():
-            value = NotRightOp([self.value, self.start]).to_sql(schema)[0].sql.s
+            value = NotRightOp([self.value, self.start]).to_bq(schema)[0].sql.s
 
         index = "INSTR" + sql_iso(sql_list([value, find]))
 
