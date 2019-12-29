@@ -2,6 +2,7 @@ from google.cloud.bigquery import Client
 from google.oauth2 import service_account
 
 from mo_json import json2value
+from mo_threads import Queue, Thread
 from pyLibrary.env import http
 
 from pyLibrary.convert import zip2bytes
@@ -9,7 +10,7 @@ from pyLibrary.convert import zip2bytes
 from mo_logs.strings import expand_template
 
 from jx_bigquery import bigquery
-from mo_logs import startup, constants, Log
+from mo_logs import startup, constants, Log, Except
 
 
 def example(config):
@@ -43,19 +44,39 @@ def push(config):
     index = container.get_or_create_table(config.destination)
 
     base_url = "https://active-data-treeherder-normalized.s3-us-west-2.amazonaws.com/{{major}}.{{minor}}.json.gz"
-    major = 1700
-    minor = 165
+    major = 1753
+    minor = 54
+
+    NUM_THREADS = 4
+    queue = Queue("data", max=NUM_THREADS)
+
+    def extender(please_stop):
+        while not please_stop:
+            data = queue.pop(till=please_stop)
+            try:
+                index.extend(json2value(l.decode('utf8')) for l in data.split(b"\n") if l)
+            except Exception as e:
+                Log.warning("could not add", cause=e)
+
+    threads = [
+        Thread.run("extender"+str(i), extender)
+        for i in range(NUM_THREADS)
+    ]
+
     while True:
         url = expand_template(base_url, {"major": major, "minor": minor})
+        Log.note("add {{url}}", url=url)
         try:
-            Log.note("add {{url}}", url=url)
             data = zip2bytes(http.get(url, retry={"times": 3, "sleep": 2}).all_content)
-            index.extend(map(lambda l: json2value(l.decode('utf8')), data.split("\n")))
-            minor += 1
+            queue.add(data)
         except Exception as e:
-            minor = 0
-            major += 1
-            Log.error("problem", cause=e)
+            e = Except.wrap(e)
+            if "Not a gzipped file" in e:
+                minor = 0
+                major += 1
+                continue
+            Log.warning("could not read {{url}}", url=url, cause=e)
+        minor += 1
 
 
 def main():
@@ -65,7 +86,7 @@ def main():
         Log.start(config.debug)
         push(config.push)
     except Exception as e:
-        Log.error("Problem with etl", e)
+        Log.error("Problem with etl", cause=e)
     finally:
         Log.stop()
 

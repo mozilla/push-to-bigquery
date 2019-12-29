@@ -45,7 +45,7 @@ class FileString(text):
         return self
 
     def split(self, sep):
-        if sep != "\n":
+        if sep not in (b"\n", u"\n"):
             Log.error("Can only split by lines")
         self.file.seek(0)
         return LazyLines(self.file)

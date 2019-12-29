@@ -1,7 +1,8 @@
 import string
 
 from jx_bigquery.sql import escape_name
-from mo_dots import is_many, is_data, Null, wrap
+from jx_python import jx
+from mo_dots import is_many, is_data, Null, wrap, split_field, join_field
 from mo_future import is_text, first
 from mo_json import (
     BOOLEAN,
@@ -36,6 +37,14 @@ def typed_encode(value, schema):
         worker[field] = worker[path]
         worker[path] = None
 
+        # DO NOT LEAVE ANY EMPTY OBJECT RESIDUE
+        _path = split_field(path)
+        for i, _ in jx.reverse(enumerate(_path)):
+            sub_path = join_field(_path[:i])
+            if not worker[sub_path].keys():
+                worker[sub_path] = None
+            else:
+                break
     schema._partition.apply(output)
 
     return output, update, nested

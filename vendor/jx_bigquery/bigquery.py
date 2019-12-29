@@ -47,7 +47,7 @@ from mo_kwargs import override
 from mo_logs import Log, Except
 from mo_math.randoms import Random
 from mo_threads import Till
-from mo_times import Duration, MINUTE, YEAR, DAY
+from mo_times import Duration, MINUTE, YEAR, DAY, Timer
 from mo_times.dates import Date
 from pyLibrary.sql import (
     ConcatSQL,
@@ -283,18 +283,19 @@ class Table(Facts):
 
         try:
             update = {}
-            while True:
-                output = []
-                for rownum, row in enumerate(rows):
-                    typed, more, add_nested = typed_encode(row, self.schema)
-                    if add_nested:
-                        # row HAS NEW NESTED COLUMN!
-                        # GO OVER THE rows AGAIN SO "RECORD" GET MAPPED TO "REPEATED"
+            with Timer("encoding"):
+                while True:
+                    output = []
+                    for rownum, row in enumerate(rows):
+                        typed, more, add_nested = typed_encode(row, self.schema)
+                        if add_nested:
+                            # row HAS NEW NESTED COLUMN!
+                            # GO OVER THE rows AGAIN SO "RECORD" GET MAPPED TO "REPEATED"
+                            break
+                        update.update(more)
+                        output.append(typed)
+                    else:
                         break
-                    update.update(more)
-                    output.append(typed)
-                else:
-                    break
 
             if update or not self.shard:
                 # BATCH HAS ADDITIONAL COLUMNS!!
@@ -303,8 +304,14 @@ class Table(Facts):
                 Log.note(
                     "added new shard with name: {{shard}}", shard=self.shard.table_id
                 )
-
-            failures = self.container.client.insert_rows(self.shard, output)
+            with Timer("insert to bq"):
+                failures = self.container.client.insert_rows_json(
+                    self.shard,
+                    json_rows=output,
+                    row_ids=[None]*len(output),
+                    skip_invalid_rows=False,
+                    ignore_unknown_values=False
+                )
             if failures:
                 Log.error("expecting no failures:\n{{failures}}", failure=failures)
             else:
@@ -348,7 +355,10 @@ class Table(Facts):
 
         shard_schemas = [
             Snowflake.parse(
-                shard.schema, self.container.full_name + ApiName(shard.table_id)
+                schema=shard.schema,
+                es_index=self.container.full_name + ApiName(shard.table_id),
+                top_level_fields=self.top_level_fields,
+                partition=self.partition
             )
             for shard in shards
         ]
