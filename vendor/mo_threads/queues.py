@@ -163,7 +163,7 @@ class Queue(object):
                 if not stop_waiting and len(self.queue) >= self.max:
                     now = time()
                     Log.alert(
-                        "Queue by name of {{name|quote}} is full with ({{num}} items), thread(s) have been waiting {{wait_time}} sec",
+                        "Queue with name {{name|quote}} is full with ({{num}} items), thread(s) have been waiting {{wait_time}} sec",
                         name=self.name,
                         num=len(self.queue),
                         wait_time=now-start

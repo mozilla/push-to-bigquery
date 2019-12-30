@@ -44,20 +44,28 @@ def push(config):
     index = container.get_or_create_table(config.destination)
 
     base_url = "https://active-data-treeherder-normalized.s3-us-west-2.amazonaws.com/{{major}}.{{minor}}.json.gz"
-    major = 1753
-    minor = 54
+    major = 1776
+    minor = 0
 
     NUM_THREADS = 4
     queue = Queue("data", max=NUM_THREADS)
 
     def extender(please_stop):
         while not please_stop:
-            data = queue.pop(till=please_stop)
             try:
-                index.extend(json2value(l.decode('utf8')) for l in data.split(b"\n") if l)
+                data = queue.pop(till=please_stop)
+                try:
+                    index.extend(json2value(l.decode('utf8')) for l in data.split(b"\n") if l)
+                except Exception as e:
+                    if "Request payload size exceeds the limit" in e:
+                        lines = list(data.split(b"\n"))
+                        cut = len(lines)//2
+                        queue.add(b"\n".join(lines[:cut]), force=True)
+                        queue.add(b"\n".join(lines[cut:]), force=True)
+                        continue
+                    Log.warning("could not add", cause=e)
             except Exception as e:
-                Log.warning("could not add", cause=e)
-
+                Log.warning("Faliure", cause=e)
     threads = [
         Thread.run("extender"+str(i), extender)
         for i in range(NUM_THREADS)
