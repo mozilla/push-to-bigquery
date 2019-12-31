@@ -93,7 +93,7 @@ class BQLScript(SQLScript_, SQL):
             )
 
     def __str__(self):
-        return str(self.sql)
+        return text(self.sql)
 
     def __unicode__(self):
         return text(self.sql)

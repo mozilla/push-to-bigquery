@@ -66,12 +66,12 @@ def _typed_encode(value, schema):
             nest_added |= n
 
         if update:
-            return {str(REPEATED): output}, {NESTED_TYPE: update}, True
+            return {text(REPEATED): output}, {NESTED_TYPE: update}, True
         else:
-            return {str(REPEATED): output}, None, nest_added
+            return {text(REPEATED): output}, None, nest_added
     elif NESTED_TYPE in schema:
         if not value:
-            return {str(REPEATED): []}, None, False
+            return {text(REPEATED): []}, None, False
         else:
             return _typed_encode([value], schema)
     elif is_data(value):
@@ -83,7 +83,7 @@ def _typed_encode(value, schema):
             if not child_schema:
                 child_schema = schema[k] = {}
             result, more_update, n = _typed_encode(v, child_schema)
-            output[str(escape_name(k))] = result
+            output[text(escape_name(k))] = result
             if more_update:
                 update.update({k: more_update})
                 nest_added |= n
@@ -98,7 +98,7 @@ def _typed_encode(value, schema):
             )
         return value, None, False
     elif value is None:
-        return {str(escape_name(t)): None for t, child_schema in schema}, None, False
+        return {text(escape_name(t)): None for t, child_schema in schema}, None, False
     else:
         t, json_type = schema_type(value)
         child_schema = schema.get(t)
@@ -106,7 +106,7 @@ def _typed_encode(value, schema):
         if not child_schema:
             schema[t] = json_type
             update = {t: json_type}
-        return {str(escape_name(t)): value}, update, False
+        return {text(escape_name(t)): value}, update, False
 
 
 def schema_type(value):

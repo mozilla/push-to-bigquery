@@ -103,7 +103,7 @@ def unescape_name(esc_name):
         Log.error("expecting an api name")
     if len(esc_name.values)>1:
         Log.error("do not knwo how to handle")
-    parts = str(esc_name).split("_")
+    parts = text(esc_name).split("_")
     result = parts[:1]
     for i, (p, q) in jx.chunk(parts[1:], 2):
         if len(p) == 0:
