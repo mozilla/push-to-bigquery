@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -13,7 +13,7 @@ from jx_base.expressions import NULL, SqlSubstrOp as SqlSubstrOp_
 from jx_bigquery.expressions._utils import check
 from jx_bigquery.expressions.literal import Literal
 from mo_dots import wrap
-from pyLibrary.sql import sql_iso, sql_list
+from mo_sql import sql_iso, sql_list
 
 
 class SqlSubstrOp(SqlSubstrOp_):

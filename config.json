@@ -12,6 +12,9 @@
             },
             "dataset": "treeherder",
             "table": "jobs",
+            "lookup": {
+                "action.request_time.__t__": "time"
+            },
             "top_level_fields": {
                 "job.id": "_job_id",
                 "last_modified": "_last_modified",

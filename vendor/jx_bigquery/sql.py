@@ -17,7 +17,7 @@ from mo_files.url import hex2chr
 from mo_future import text, first, is_text
 from mo_logs import Log
 from mo_times import Date, Duration
-from pyLibrary.sql import (
+from mo_sql import (
     SQL,
     SQL_FALSE,
     SQL_NULL,
@@ -75,6 +75,8 @@ class ApiName(object):
         Log.error("disabled")
 
     def __eq__(self, other):
+        if other == None:
+            return False
         if not isinstance(other, ApiName):
             Log.error("not alloweed")
         return self.values == other.values

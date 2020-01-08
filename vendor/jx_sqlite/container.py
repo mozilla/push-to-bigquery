@@ -18,13 +18,13 @@ from jx_sqlite.snowflake import Snowflake
 from mo_future import first
 from mo_kwargs import override
 from mo_logs import Log
-from pyLibrary.sql import (
+from mo_sql import (
     SQL_SELECT,
     SQL_FROM,
     SQL_UPDATE,
     SQL_SET,
 )
-from pyLibrary.sql.sqlite import (
+from jx_sqlite.sqlite import (
     Sqlite,
     quote_column,
     sql_eq,

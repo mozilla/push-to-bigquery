@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -15,7 +15,7 @@ from jx_sqlite.expressions.length_op import LengthOp
 from jx_sqlite.expressions.sql_script import SQLScript
 from mo_dots import coalesce
 from mo_json import STRING
-from pyLibrary.sql import (
+from mo_sql import (
     SQL,
     SQL_CASE,
     SQL_ELSE,
@@ -28,7 +28,7 @@ from pyLibrary.sql import (
     sql_list,
     sql_concat_text,
 )
-from pyLibrary.sql.mysql import quote_value
+from jx_mysql.mysql import quote_value
 
 
 class ConcatOp(ConcatOp_):

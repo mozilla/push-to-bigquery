@@ -5,19 +5,19 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_sqlite import GUID, quoted_GUID
-from pyLibrary.sql.sqlite import quote_column
+from jx_sqlite.sqlite import quote_column
 
 from jx_base.expressions import Variable as Variable_
 from jx_base.queries import get_property_name
 from jx_bigquery.expressions._utils import json_type_to_bq_type, check
 from mo_dots import ROOT_PATH, relative_field, wrap
 from mo_json import BOOLEAN, OBJECT
-from pyLibrary.sql import SQL_IS_NOT_NULL, SQL_NULL, SQL_TRUE
+from mo_sql import SQL_IS_NOT_NULL, SQL_NULL, SQL_TRUE
 
 
 class Variable(Variable_):

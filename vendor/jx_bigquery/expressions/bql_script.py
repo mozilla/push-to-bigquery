@@ -13,7 +13,7 @@ from jx_bigquery.expressions._utils import json_type_to_bq_type, BQLang, check
 from mo_dots import coalesce, wrap
 from mo_future import PY2, text
 from mo_logs import Log
-from pyLibrary.sql import (
+from mo_sql import (
     SQL,
     SQL_CASE,
     SQL_END,

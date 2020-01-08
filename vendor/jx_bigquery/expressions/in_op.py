@@ -5,11 +5,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from pyLibrary.sql.sqlite import quote_list
+from jx_sqlite.sqlite import quote_list
 
 from jx_base.expressions import InOp as InOp_
 from jx_base.language import is_op
@@ -18,7 +18,7 @@ from jx_bigquery.expressions.literal import Literal
 from mo_dots import wrap
 from mo_json import json2value
 from mo_logs import Log
-from pyLibrary.sql import SQL_FALSE, SQL_OR, sql_iso, ConcatSQL, SQL_IN
+from mo_sql import SQL_FALSE, SQL_OR, sql_iso, ConcatSQL, SQL_IN
 
 
 class InOp(InOp_):

@@ -15,8 +15,8 @@ from jx_sqlite.table import Table
 from mo_dots import concat_field, wrap
 from mo_future import text
 from mo_logs import Log
-from pyLibrary.sql import SQL_FROM, SQL_LIMIT, SQL_SELECT, SQL_STAR, SQL_ZERO, sql_iso, sql_list, SQL_CREATE, SQL_AS
-from pyLibrary.sql.sqlite import quote_column
+from mo_sql import SQL_FROM, SQL_LIMIT, SQL_SELECT, SQL_STAR, SQL_ZERO, sql_iso, sql_list, SQL_CREATE, SQL_AS
+from jx_sqlite.sqlite import quote_column
 
 
 class Snowflake(jx_base.Snowflake):

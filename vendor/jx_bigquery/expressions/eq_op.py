@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -25,7 +25,7 @@ from jx_bigquery.expressions.bql_script import BQLScript
 from jx_bigquery.expressions.when_op import WhenOp
 from mo_json import BOOLEAN
 from mo_logs import Log
-from pyLibrary.sql import SQL_FALSE, SQL_IS_NULL, SQL_OR, sql_iso
+from mo_sql import SQL_FALSE, SQL_IS_NULL, SQL_OR, sql_iso
 
 
 class EqOp(EqOp_):

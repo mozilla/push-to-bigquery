@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
@@ -15,6 +15,7 @@ import re
 import sys
 from collections import Mapping, namedtuple
 
+from jx_base import jx_expression
 from mo_dots import Data, coalesce, unwraplist, listwrap, wrap
 from mo_files import File
 from mo_future import allocate_lock as _allocate_lock, text, first, is_text, zip_longest
@@ -27,7 +28,7 @@ from mo_math.stats import percentile
 from mo_threads import Lock, Queue, Thread, Till
 from mo_times import Date, Duration, Timer
 from pyLibrary import convert
-from pyLibrary.sql import (
+from mo_sql import (
     DB,
     SQL,
     SQL_FALSE,
@@ -52,7 +53,7 @@ from pyLibrary.sql import (
     SQL_OP,
     SQL_CP,
     SQL_DOT,
-    SQL_LT, SQL_SPACE, SQL_AS)
+    SQL_LT, SQL_SPACE, SQL_AS, SQL_LIMIT)
 
 DEBUG = False
 TRACE = True
@@ -665,12 +666,25 @@ def sql_query(command):
 
     acc.append(SQL_FROM)
     acc.append(quote_column(command["from"]))
-    if command.where.eq:
+    if command.where:
         acc.append(SQL_WHERE)
-        acc.append(sql_eq(**command.where.eq))
-    if command.orderby:
+        if command.where.eq:
+            acc.append(sql_eq(**command.where.eq))
+        else:
+            from jx_sqlite.expressions import SQLang
+
+            where = SQLang[jx_expression(command.where)].to_sql[0].b
+            acc.append(where)
+
+    sort = coalesce(command.orderby, command.sort)
+    if sort:
         acc.append(SQL_ORDERBY)
-        acc.append(JoinSQL(SQL_COMMA, map(quote_column, listwrap(command.orderby))))
+        acc.append(JoinSQL(SQL_COMMA, map(quote_column, listwrap(sort))))
+
+    if command.limit:
+        acc.append(SQL_LIMIT)
+        acc.append(JoinSQL(SQL_COMMA, map(quote_value, listwrap(command.limit))))
+
     return ConcatSQL(acc)
 
 

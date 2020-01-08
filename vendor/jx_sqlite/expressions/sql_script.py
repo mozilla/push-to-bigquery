@@ -5,16 +5,16 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import FALSE, NULL, ONE, SQLScript as SQLScript_, TRUE, ZERO
+from jx_base.expressions import FALSE, NULL, ONE, SQLScript as SQLScript_, TRUE, ZERO, _utils
 from jx_sqlite.expressions._utils import json_type_to_sql_type, SQLang, check
 from mo_dots import coalesce, wrap
 from mo_future import PY2, text
 from mo_logs import Log
-from pyLibrary.sql import (
+from mo_sql import (
     SQL,
     SQL_CASE,
     SQL_END,
@@ -125,3 +125,6 @@ class SQLScript(SQLScript_, SQL):
             return True
         else:
             return False
+
+
+_utils.SQLScript = SQLScript

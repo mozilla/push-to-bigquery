@@ -14,7 +14,7 @@ from jx_bigquery.sql import (
     sql_alias,
     escape_name,
     ApiName,
-)
+    sql_query)
 from jx_bigquery.typed_encoder import (
     NESTED_TYPE,
     typed_encode,
@@ -30,7 +30,7 @@ from mo_dots import (
     Null,
     unwraplist,
     is_data,
-    Data)
+    Data, coalesce, wrap)
 from mo_future import is_text, text, first
 from mo_kwargs import override
 from mo_logs import Log, Except
@@ -38,7 +38,7 @@ from mo_math.randoms import Random
 from mo_threads import Till
 from mo_times import MINUTE, Timer
 from mo_times.dates import Date
-from pyLibrary.sql import (
+from mo_sql import (
     ConcatSQL,
     SQL,
     SQL_SELECT,
@@ -135,7 +135,7 @@ class Dataset(Container):
     def create_table(
         self,
         table,
-        schema=None,
+        lookup=None,
         typed=True,
         read_only=True,  # TO PREVENT ACCIDENTAL WRITING
         sharded=False,
@@ -144,40 +144,31 @@ class Dataset(Container):
         top_level_fields=None,
         kwargs=None,
     ):
-        partition = Partition(kwargs=partition, schema=schema)
+        full_name = self.full_name + escape_name(table)
+        schema = Snowflake(text(full_name), top_level_fields, partition, lookup=lookup)
 
         if read_only:
             Log.error("Can not create a table for read-only use")
 
         if sharded:
-            view_sql_name = quote_column(self.full_name + escape_name(table))
             shard_name = escape_name(table + "_" + "".join(Random.sample(ALLOWED, 20)))
             shard_api_name = self.full_name + shard_name
             _shard = bigquery.Table(text(shard_api_name), schema=schema.to_bq_schema())
-            _shard.time_partitioning = unwrap(partition.bq_time_partitioning)
-            _shard.clustering_fields = unwrap(
-                unwraplist([text(ApiName(*split_field(f))) for f in listwrap(cluster)])
-            )
+            _shard.time_partitioning = unwrap(schema._partition.bq_time_partitioning)
+            _shard.clustering_fields = [
+                c.es_column
+                for f in listwrap(cluster)
+                for c in [first(schema.leaves(f))]
+                if c
+            ] or None
             self.shard = self.client.create_table(_shard)
 
-            self.client.query(
-                ConcatSQL(
-                    (
-                        SQL("CREATE VIEW\n"),
-                        view_sql_name,
-                        SQL_AS,
-                        SQL_SELECT,
-                        SQL_STAR,
-                        SQL_FROM,
-                        quote_column(shard_api_name),
-                    )
-                ).sql
-            )
+            if lookup:
+                # ONLY MAKE THE VIEW IF THERE IS A SCHEMA
+                self.create_view(full_name, shard_api_name)
         else:
-            api_name = escape_name(table)
-            full_name = self.full_name + api_name
             _table = bigquery.Table(text(full_name), schema=schema.to_bq_schema())
-            _table.time_partitioning = unwrap(partition.bq_time_partitioning)
+            _table.time_partitioning = unwrap(schema._partition.bq_time_partitioning)
             _table.clustering_fields = [
                 l.es_column for f in listwrap(cluster) for l in schema.leaves(f)
             ]
@@ -195,6 +186,17 @@ class Dataset(Container):
             container=self,
         )
 
+    def create_view(self, view_api_name, shard_api_name):
+        job = self.client.query(
+            ConcatSQL(
+                (
+                    SQL("CREATE VIEW\n"),
+                    quote_column(view_api_name),
+                    SQL_AS,
+                    sql_query({"from": shard_api_name})
+                )
+            ).sql
+        )
 
 class Table(Facts):
     @override
@@ -229,7 +231,7 @@ class Table(Facts):
 
         esc_name = escape_name(table)
         self.full_name = container.full_name + esc_name
-        alias_view = container.client.get_table(text(self.full_name))
+        self.alias_view = alias_view = container.client.get_table(text(self.full_name))
         if not sharded:
             if not read_only and alias_view.table_type == "VIEW":
                 Log.error("Expecting a table, not a view")
@@ -237,7 +239,9 @@ class Table(Facts):
         else:
             if alias_view.table_type != "VIEW":
                 Log.error("Sharded tables require a view")
-            self.shard = None
+            current_view = container.client.get_table(text(self.full_name))
+            view_sql = current_view.view_query
+            self.shard = container.client.get_table(text(container.full_name+_extract_primary_shard_name(view_sql)))
         self._schema = Snowflake.parse(
             alias_view.schema, text(self.full_name), self.top_level_fields, partition
         )
@@ -253,8 +257,8 @@ class Table(Facts):
         primary_shard = self.container.create_table(
             table=self.short_name + "_" + "".join(Random.sample(ALLOWED, 20)),
             sharded=False,
+            lookup=self._schema.lookup,
             kwargs=self.config,
-            schema=self._schema,
         )
         self.shard = primary_shard.shard
 
@@ -269,11 +273,11 @@ class Table(Facts):
                     output = []
                     for rownum, row in enumerate(rows):
                         typed, more, add_nested = typed_encode(row, self.schema)
+                        update.update(more)
                         if add_nested:
                             # row HAS NEW NESTED COLUMN!
                             # GO OVER THE rows AGAIN SO "RECORD" GET MAPPED TO "REPEATED"
                             break
-                        update.update(more)
                         output.append(typed)
                     else:
                         break
@@ -294,10 +298,18 @@ class Table(Facts):
                     ignore_unknown_values=False,
                 )
             if failures:
-                Log.error("expecting no failures:\n{{failures}}", failure=failures)
+                if all(r == "stopped" for r in wrap(failures).errors.reason):
+                    self._create_new_shard()
+                    Log.note(
+                        "STOPPED encountered: Added new shard with name: {{shard}}", shard=self.shard.table_id
+                    )
+                Log.error("Got {{num}} failures:\n{{failures|json}}", num=len(failures), failures=failures[:5])
             else:
                 Log.note("{{num}} rows added", num=len(output))
         except Exception as e:
+            e = Except.wrap(e)
+            if "Request payload size exceeds the limit" in e:
+                pass
             Log.error("Do not know how to handle", cause=e)
         finally:
             self.last_extend = Date.now()
@@ -321,11 +333,7 @@ class Table(Facts):
                         Log.error("expecting {{table}} to be a view", table=api_name)
                     current_view = self.container.client.get_table(table)
                     view_sql = current_view.view_query
-                    # TODO: USE REAL PARSER
-                    e = view_sql.lower().find("from ")
-                    primary_shard_name = ApiName(
-                        view_sql[e + 5 :].strip().split(".")[-1].strip("`")
-                    )
+                    primary_shard_name = _extract_primary_shard_name(view_sql)
                 elif SUFFIX_PATTERN.match(text(table_api_name)[len(text(api_name)) :]):
                     shards.append(self.container.client.get_table(table))
 
@@ -450,19 +458,7 @@ class Table(Facts):
             self.container.client.delete_table(current_view)
 
         # CREATE NEW VIEW
-        self.container.client.query(
-            ConcatSQL(
-                (
-                    SQL("CREATE VIEW\n"),
-                    quote_column(view_full_name),
-                    SQL_AS,
-                    SQL_SELECT,
-                    SQL_STAR,
-                    SQL_FROM,
-                    quote_column(primary_full_name),
-                )
-            ).sql
-        )
+        self.container.create_view(view_full_name, primary_full_name)
 
     def condense(self):
         """
@@ -502,6 +498,14 @@ class Table(Facts):
                 )
             ).sql
         )
+
+
+def _extract_primary_shard_name(view_sql):
+    # TODO: USE REAL PARSER
+    e = view_sql.lower().find("from ")
+    return ApiName(
+        view_sql[e + 5 :].strip().split(".")[-1].strip("`")
+    )
 
 
 def gen_select(total_schema, schema):

@@ -29,7 +29,7 @@ class Snowflake(jx_base.Snowflake):
     2. THE PARTITION FIELD MUST BE A TIMESTAMP, WHICH IS NOT A JSON TYPE
     """
 
-    def __init__(self, es_index, top_level_fields, partition):
+    def __init__(self, es_index, top_level_fields, partition, lookup=None):
         """
         :param es_index:  NAME OF THE INDEX (FOR PROVIDING FULL COLUMN DETAILS)
         :param top_level_fields:  REQUIRED TO MAP INNER PROPERTIES TO THE TOP LEVEL, AS REQUIRED BY BQ FOR PARTITIONS AND CLUSTERING
@@ -38,14 +38,19 @@ class Snowflake(jx_base.Snowflake):
         if not is_text(es_index):
             Log.error("expecting string")
         self.es_index = es_index
-        self.lookup = {}
+        self.lookup = lookup or {}
         self._columns = None
         self.top_level_fields = top_level_fields
-        self._top_level_fields = None
+        self._top_level_fields = None  # dict FROM FULL-API-NAME TO TOP-LEVEL-FIELD NAME
         self._es_type_info = Data()
         self._es_type_info[partition.field] = "TIMESTAMP"
         self.partition = partition
         self._partition = None
+
+    @property
+    def bq_time_partitioning(self):
+        _ = self.columns  # ENSURE self_partition HAS BEEN MADE
+        return self._partition.bq_time_partitioning
 
     @property
     def columns(self):
@@ -53,14 +58,22 @@ class Snowflake(jx_base.Snowflake):
             now = Date.now()
             columns = []
 
-            def parse_schema(schema, tops, es_type_info, jx_path, nested_path, es_path):
-                if is_text(schema):
-                    json_type = schema
+            def parse_lookup(lookup, tops, es_type_info, jx_path, nested_path, es_path):
+                if is_text(lookup):
+                    json_type = lookup
+                    expected_es_type = json_type_to_bq_type[json_type]
+                    if es_type_info and es_type_info != expected_es_type:
+                        Log.error(
+                            "expecting {{path}} to be of type {{expected_type}} not of type {{observed_type}}",
+                            path=jx_path,
+                            expected_type=expected_es_type,
+                            observed_type=es_type_info
+                        )
                     c = jx_base.Column(
                         name=join_field(jx_path),
                         es_column=coalesce(tops, text(es_path)),
                         es_index=self.es_index,
-                        es_type=coalesce(es_type_info, json_type_to_bq_type[json_type]),
+                        es_type=coalesce(es_type_info, expected_es_type),
                         jx_type=json_type,
                         nested_path=nested_path,
                         last_updated=now,
@@ -78,10 +91,10 @@ class Snowflake(jx_base.Snowflake):
                     )
                     columns.append(c)
                     count = len(columns)
-                    for k, s in schema.items():
+                    for k, s in lookup.items():
                         if k == NESTED_TYPE:
                             c.jx_type = NESTED
-                            parse_schema(
+                            parse_lookup(
                                 s,
                                 tops if is_text(tops) else tops[k],
                                 es_type_info
@@ -92,7 +105,7 @@ class Snowflake(jx_base.Snowflake):
                                 es_path + escape_name(k),
                             )
                         else:
-                            parse_schema(
+                            parse_lookup(
                                 s,
                                 tops if is_text(tops) else tops[k],
                                 es_type_info
@@ -104,11 +117,11 @@ class Snowflake(jx_base.Snowflake):
                             )
                     if is_text(tops) and len(columns) > count + 1:
                         Log.error(
-                            "too many top level fields at {{field}}",
+                            "too many top level fields at {{field}}:",
                             field=join_field(jx_path),
                         )
 
-            parse_schema(
+            parse_lookup(
                 self.lookup,
                 self.top_level_fields,
                 self._es_type_info,
@@ -179,14 +192,14 @@ class Snowflake(jx_base.Snowflake):
         # GRAB THE TOP-LEVEL FIELDS
         top_fields = [field for path, field in top_level_fields.leaves()]
         i = 0
-        while schema[i].name in top_fields:
+        while i<len(schema) and schema[i].name in top_fields:
             i = i + 1
 
+        output.top_level_fields = top_level_fields
         output.lookup = parse_schema(schema[i:], (), (".",), ())
 
-        # INSERT TOP-LEVEL FIELDS
+        # INSERT TOP-LEVEL FIELDS INTO THE loopkup
         lookup = wrap(output.lookup)
-
         for column in schema[:i]:
             path = first(
                 name
@@ -197,7 +210,6 @@ class Snowflake(jx_base.Snowflake):
             lookup[path] = OrderedDict(
                 [(json_type_to_inserter_type[json_type], json_type)]
             )
-            output.top_level_fields[path] = column.name
         return output
 
     def leaves(self, name):
@@ -255,9 +267,8 @@ class Snowflake(jx_base.Snowflake):
                     if fields:
                         Log.error("not expecting a structure")
                     if self._partition.field == top_field:
-                        # PARTITION FIELD MUST BE A TIMESTAMP
-                        bqt = bqt.copy()
-                        bqt["field_type"] = "TIMESTAMP"
+                        if bqt["field_type"] != "TIMESTAMP":
+                            Log.error("Partition field must be of time type")
                     struct = SchemaField(name=top_field, fields=fields, **bqt)
                     top_fields.append(struct)
                 elif not fields and bqt["field_type"] == "RECORD":
@@ -270,6 +281,7 @@ class Snowflake(jx_base.Snowflake):
                     output.append(struct)
             return output
 
+        _ = self.columns  # ENSURE lookup HAS BEEN PROCESSED
         if not self.lookup:
             return []
         main_schema = _schema_to_bq_schema((), ApiName(), self.lookup)

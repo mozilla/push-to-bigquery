@@ -15,7 +15,7 @@ def push(config):
     major = 1791
     minor = 39
 
-    NUM_THREADS = 4
+    NUM_THREADS = 1
     queue = Queue("data", max=NUM_THREADS)
 
     def extender(please_stop):
