@@ -24,10 +24,11 @@ def push(config):
             try:
                 data = queue.pop(till=please_stop)
                 try:
-                    index2.extend(
+                    index2.extend([
                         json2value(l.decode("utf8")) for l in data.split(b"\n") if l
-                    )
+                    ])
                 except Exception as e:
+                    e = Except.wrap(e)
                     if "Request payload size exceeds the limit" in e:
                         lines = list(data.split(b"\n"))
                         cut = len(lines) // 2

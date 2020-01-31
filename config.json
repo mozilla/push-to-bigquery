@@ -12,7 +12,7 @@
             },
             "dataset": "treeherder",
             "table": "jobs",
-            "lookup": {
+            "schema": {
                 "action.request_time.__t__": "time"
             },
             "top_level_fields": {

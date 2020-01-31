@@ -209,4 +209,4 @@ def sql_query(command):
     if command.orderby:
         acc.append(SQL_ORDERBY)
         acc.append(JoinSQL(SQL_COMMA, map(quote_column, listwrap(command.orderby))))
-    return ConcatSQL(acc)
+    return ConcatSQL(*acc)
