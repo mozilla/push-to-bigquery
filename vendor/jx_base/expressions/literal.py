@@ -19,7 +19,7 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import _utils
+from jx_base.expressions import _utils, expression
 from jx_base.expressions._utils import simplified, value2json
 from jx_base.expressions.expression import Expression
 from mo_dots import Null, is_data
@@ -114,6 +114,9 @@ class Literal(Expression):
     def partial_eval(self):
         return self
 
+    def str(self):
+        return str(self.value)
+
 
 ZERO = Literal(0)
 ONE = Literal(1)
@@ -135,3 +138,5 @@ def is_literal(l):
 
 
 _utils.Literal = Literal
+expression.Literal = Literal
+expression.is_literal=is_literal

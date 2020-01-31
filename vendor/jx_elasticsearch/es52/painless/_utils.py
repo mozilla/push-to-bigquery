@@ -5,30 +5,22 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.language import Language
-
 from jx_base.expressions import (
     FALSE,
-    FalseOp as FalseOp_,
     NULL,
-    NullOp,
     TRUE,
-    TrueOp as TrueOp_,
-    extend,
 )
-from jx_elasticsearch.es52.painless.and_op import AndOp
+from jx_base.language import Language
 from jx_elasticsearch.es52.painless.es_script import EsScript
-from jx_elasticsearch.es52.painless.literal import Literal
-from jx_elasticsearch.es52.painless.number_op import NumberOp
-from jx_elasticsearch.es52.painless.or_op import OrOp
-from jx_elasticsearch.es52.painless.when_op import WhenOp
 from mo_dots import Null
-from mo_future import text
-from mo_json import BOOLEAN, INTEGER, IS_NULL, NUMBER, STRING
+from mo_json import BOOLEAN, NUMBER, STRING
+
+AndOp, Literal, NumberOp, OrOp, WhenOp  = [None]*5
+
 
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
@@ -61,20 +53,6 @@ return output.toString()
 """
 
 
-def box(script):
-    """
-    :param es_script:
-    :return: TEXT EXPRESSION WITH NON OBJECTS BOXED
-    """
-    if script.type is BOOLEAN:
-        return "Boolean.valueOf(" + text(script.expr) + ")"
-    elif script.type is INTEGER:
-        return "Integer.valueOf(" + text(script.expr) + ")"
-    elif script.type is NUMBER:
-        return "Double.valueOf(" + text(script.expr) + ")"
-    else:
-        return script.expr
-
 
 def _binary_to_es_script(self, schema, not_null=False, boolean=False, many=True):
     op, identity = _painless_operators[self.op]
@@ -83,27 +61,14 @@ def _binary_to_es_script(self, schema, not_null=False, boolean=False, many=True)
     script = "(" + lhs.expr + ") " + op + " (" + rhs.expr + ")"
     missing = OrOp([self.lhs.missing(), self.rhs.missing()])
 
-    return (
-        WhenOp(
-            missing,
-            **{
-                "then": self.default,
-                "else": EsScript(type=NUMBER, expr=script, frum=self, schema=schema),
-            }
-        )
-        .partial_eval()
-        .to_es_script(schema)
+    return EsScript(
+        type=NUMBER,
+        miss=missing,
+        frum=self,
+        expr=script,
+        schema=schema,
+        many=False
     )
-
-
-@extend(NullOp)
-def to_es_script(self, schema, not_null=False, boolean=False, many=True):
-    return null_script
-
-
-@extend(FalseOp_)
-def to_es_script(self, schema, not_null=False, boolean=False, many=True):
-    return false_script
 
 
 def _inequality_to_es_script(self, schema, not_null=False, boolean=False, many=True):
@@ -189,10 +154,6 @@ def _multi_to_es_script(self, schema, not_null=False, boolean=False, many=True):
         )
 
 
-@extend(TrueOp_)
-def to_es_script(self, schema, not_null=False, boolean=False, many=True):
-    return true_script
-
 
 Painless = Language("Painless")
 
@@ -218,9 +179,7 @@ _painless_operators = {
 }
 
 
-true_script = EsScript(type=BOOLEAN, expr="true", frum=TRUE, schema=Null)
-false_script = EsScript(type=BOOLEAN, expr="false", frum=FALSE, schema=Null)
-null_script = EsScript(miss=TRUE, type=IS_NULL, expr="null", frum=NULL, schema=Null)
 empty_string_script = EsScript(
     miss=TRUE, type=STRING, expr='""', frum=NULL, schema=Null
 )
+

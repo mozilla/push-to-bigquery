@@ -9,7 +9,8 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import FALSE, NULL, ONE, SQLScript as SQLScript_, TRUE, ZERO, _utils
+from jx_base.expressions import FALSE, NULL, ONE, SQLScript as SQLScript_, TRUE, ZERO
+from jx_sqlite.expressions import _utils
 from jx_sqlite.expressions._utils import json_type_to_sql_type, SQLang, check
 from mo_dots import coalesce, wrap
 from mo_future import PY2, text
@@ -66,8 +67,7 @@ class SQLScript(SQLScript_, SQL):
         """
         ASSUMED PART OF class SQL, RETURN SQL
         """
-        for e in self.expr:
-            yield e
+        yield self
 
     @property
     def sql(self):
@@ -80,15 +80,13 @@ class SQLScript(SQLScript_, SQL):
             return wrap(
                 {
                     json_type_to_sql_type[self.data_type]: ConcatSQL(
-                        (
-                            SQL_CASE,
-                            SQL_WHEN,
-                            SQL_NOT,
-                            sql_iso(SQLang[self.miss].to_sql(self.schema)[0].sql.b),
-                            SQL_THEN,
-                            self.expr,
-                            SQL_END,
-                        )
+                        SQL_CASE,
+                        SQL_WHEN,
+                        SQL_NOT,
+                        sql_iso(SQLang[self.miss].to_sql(self.schema)[0].sql.b),
+                        SQL_THEN,
+                        self.expr,
+                        SQL_END,
                     )
                 }
             )

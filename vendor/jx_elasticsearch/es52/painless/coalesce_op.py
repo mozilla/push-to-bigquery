@@ -5,16 +5,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import CoalesceOp as CoalesceOp_, FALSE, NULL, TRUE
+from jx_elasticsearch.es52.painless import first_op
 from jx_elasticsearch.es52.painless.and_op import AndOp
 from jx_elasticsearch.es52.painless.es_script import EsScript
 from jx_elasticsearch.es52.painless.first_op import FirstOp
 from jx_elasticsearch.es52.painless.not_op import NotOp
-from mo_json import INTEGER, IS_NULL, NUMBER, OBJECT
+from mo_json import INTEGER, NUMBER, OBJECT
 
 
 class CoalesceOp(CoalesceOp_):
@@ -35,7 +36,7 @@ class CoalesceOp(CoalesceOp_):
             elif r.miss is FALSE:
                 acc = r
                 continue
-            elif acc.type == r.type or acc.type == IS_NULL:
+            elif acc.type == r.type or acc.miss is TRUE:
                 new_type = r.type
             elif acc.type == NUMBER and r.type == INTEGER:
                 new_type = NUMBER
@@ -52,3 +53,6 @@ class CoalesceOp(CoalesceOp_):
                 schema=schema,
             )
         return acc
+
+
+first_op.CoalesceOp = CoalesceOp

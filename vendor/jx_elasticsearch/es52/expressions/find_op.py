@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -21,10 +21,10 @@ from jx_base.expressions import (
 from jx_base.language import is_op
 from jx_elasticsearch.es52.painless import Painless
 from jx_elasticsearch.es52.expressions._utils import ES52
-from jx_elasticsearch.es52.expressions.boolean_op import BooleanOp
 from jx_elasticsearch.es52.expressions.not_op import NotOp
 from mo_json import STRING
 
+BooleanOp = None
 
 class FindOp(FindOp_):
     def to_esfilter(self, schema):

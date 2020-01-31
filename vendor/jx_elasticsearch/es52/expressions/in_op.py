@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -16,10 +16,10 @@ from jx_base.expressions import (
     is_literal,
 )
 from jx_base.language import is_op
+from jx_elasticsearch.es52.expressions.false_op import MATCH_NONE
 from jx_elasticsearch.es52.painless import Painless
 from jx_elasticsearch.es52.expressions.eq_op import EqOp
 from jx_elasticsearch.es52.expressions.or_op import OrOp
-from jx_elasticsearch.es52.util import MATCH_NONE
 from mo_dots import is_many
 from mo_future import first
 from mo_json import BOOLEAN

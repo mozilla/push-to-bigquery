@@ -12,7 +12,7 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions import LengthOp as LengthOp_
 from jx_base.expressions.literal import is_literal
 from jx_bigquery.expressions._utils import BQLang, check
-from jx_sqlite.sqlite import quote_value
+from jx_bigquery.sql import quote_value
 from mo_dots import Null, wrap
 from mo_future import text
 from mo_json import value2json
@@ -33,5 +33,5 @@ class LengthOp(LengthOp_):
                 return Null
         else:
             value = term.to_bq(schema, not_null=not_null)[0].sql.s
-            sql = ConcatSQL((SQL("LENGTH"), sql_iso(value)))
+            sql = ConcatSQL(SQL("LENGTH"), sql_iso(value))
         return wrap([{"name": ".", "sql": {"n": sql}}])

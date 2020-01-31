@@ -5,21 +5,21 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
 from copy import deepcopy
 
 import mo_math
-from jx_base.expressions import Variable, value2json, TRUE
+from jx_base.expressions import Variable, TRUE
 from jx_base.language import is_op
-from jx_elasticsearch import post as es_post
-from jx_elasticsearch.es52.aggs import build_es_query
-from jx_elasticsearch.es52.format import format_list_from_groupby
+from jx_elasticsearch.es52.agg_format import format_list_from_groupby
+from jx_elasticsearch.es52.agg_op import build_es_query
 from mo_dots import listwrap, unwrap, Null, wrap, coalesce, unwraplist
 from mo_files import TempFile, URL, mimetype
 from mo_future import first, is_text
+from mo_json import value2json
 from mo_logs import Log, Except
 from mo_math.randoms import Random
 from mo_threads import Thread
@@ -33,13 +33,13 @@ URL_PREFIX = URL("https://active-data-query-results.s3-us-west-2.amazonaws.com")
 S3_CONFIG = Null
 
 
-def is_bulkaggsop(esq, query):
+def is_bulk_agg(esq, query):
     # ONLY ACCEPTING ONE DIMENSION AT THIS TIME
     if not S3_CONFIG:
         return False
-    if query.destination != "s3":
+    if query.destination not in {"s3", "url"}:
         return False
-    if query.format != "list":
+    if query.format not in {"list"}:
         return False
     if len(listwrap(query.groupby)) != 1:
         return False
@@ -178,7 +178,7 @@ def extractor(
                     terms.include.partition = i
                     terms.include.num_partitions = num_partitions
 
-                    result = es_post(esq.es, deepcopy(es_query), query.limit)
+                    result = esq.es.search(deepcopy(es_query), query.limit)
                     aggs = unwrap(result.aggregations)
                     data = format_list_from_groupby(
                         aggs, acc, query, decoders, selects
@@ -258,7 +258,7 @@ def upload(filename, temp_file):
 def write_status(guid, status):
     try:
         filename = guid + ".status.json"
-        with Timer("upload status to S3 {{file}}", param={"file": filename}):
+        with Timer("upload status to S3 {{file}}", param={"file": filename}, verbose=DEBUG):
             try:
                 connection = Connection(S3_CONFIG).connection
                 bucket = connection.get_bucket(S3_CONFIG.bucket, validate=False)

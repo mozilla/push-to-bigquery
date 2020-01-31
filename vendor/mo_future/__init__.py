@@ -28,8 +28,8 @@ boolean_type = type(True)
 
 if PY3:
     import itertools
-    import collections
-    from collections import Callable
+    from collections import OrderedDict, UserDict
+    from collections.abc import Callable, Iterable, Mapping, Set, MutableMapping
     from functools import cmp_to_key, reduce, update_wrapper
     from configparser import ConfigParser
     from itertools import zip_longest
@@ -57,7 +57,8 @@ if PY3:
         type(filter(lambda x: True, [])),
         type({}.items()),
         type({}.values()),
-        type(map(lambda: 0, []))
+        type(map(lambda: 0, iter([]))),
+        type(reversed([]))
     )
     unichr = chr
 
@@ -101,6 +102,9 @@ if PY3:
         except StopIteration:
             return None
 
+    def next(_iter):
+        return _iter.__next__()
+
     def is_text(t):
         return t.__class__ is str
 
@@ -118,11 +122,9 @@ if PY3:
         sort_keys=True   # <-- IMPORTANT!  sort_keys==True
     ).encode
 
-    UserDict = collections.UserDict
 
 else:
-    import collections
-    from collections import Callable
+    from collections import Callable, Iterable, Mapping, Set, MutableMapping, OrderedDict
     from functools import cmp_to_key, reduce, update_wrapper
 
     import __builtin__
@@ -144,7 +146,7 @@ else:
     unichr = __builtin__.unichr
 
     xrange = __builtin__.xrange
-    generator_types = (GeneratorType,)
+    generator_types = (GeneratorType, type(reversed([])))
     unichr = __builtin__.unichr
 
     round = __builtin__.round
@@ -188,6 +190,9 @@ else:
         except StopIteration:
             return None
 
+    def next(_iter):
+        return _iter.next()
+
     def is_text(t):
         return t.__class__ is unicode
 
@@ -208,7 +213,7 @@ else:
 
 
     # COPIED FROM Python's collections.UserDict (copied July 2018)
-    class UserDict(collections.MutableMapping):
+    class UserDict(MutableMapping):
 
         # Start by filling-out the abstract methods
         def __init__(*args, **kwargs):

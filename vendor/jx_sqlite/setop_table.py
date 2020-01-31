@@ -26,7 +26,8 @@ from mo_json import IS_NULL, STRUCT
 from mo_math import UNION
 from mo_times import Date
 from mo_sql import SQL_AND, SQL_FROM, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, \
-    SQL_ORDERBY, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_iso, sql_list, ConcatSQL, SQL_STAR
+    SQL_ORDERBY, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_iso, sql_list, ConcatSQL, SQL_STAR, SQL_EQ, \
+    SQL_ZERO
 from jx_sqlite.sqlite import quote_column, quote_value, sql_alias
 
 
@@ -195,12 +196,12 @@ class SetOpTable(InsertTable):
         for n, _ in self.snowflake.tables:
             sorts.append(quote_column(COLUMN + text(index_to_uid[n])))
 
-        ordered_sql = ConcatSQL((
+        ordered_sql = ConcatSQL(
             SQL_SELECT, SQL_STAR,
             SQL_FROM, sql_iso(unsorted_sql),
             SQL_ORDERBY, sql_list(sorts),
             SQL_LIMIT, quote_value(query.limit)
-        ))
+        )
         result = self.db.query(ordered_sql)
 
         def _accumulate_nested(rows, row, nested_doc_details, parent_doc_id, parent_id_coord):
@@ -457,7 +458,7 @@ class SetOpTable(InsertTable):
         """
 
         parent_alias = "a"
-        from_clause = ""
+        from_clause = []
         select_clause = []
         children_sql = []
         done = []
@@ -486,12 +487,15 @@ class SetOpTable(InsertTable):
                         select_clause.append(sql_alias(SQL_NULL, sql_select.column_alias))
 
                 if nested_path == ".":
-                    from_clause += SQL_FROM + sql_alias(quote_column(self.snowflake.fact_name), alias)
+                    from_clause.append(SQL_FROM)
+                    from_clause.append(sql_alias(quote_column(self.snowflake.fact_name), alias))
                 else:
-                    from_clause += (
-                        SQL_LEFT_JOIN + sql_alias(quote_column(concat_field(self.snowflake.fact_name, sub_table.name)), alias) +
-                        SQL_ON + quote_column(alias, PARENT) + " = " + quote_column(parent_alias, UID)
-                    )
+                    from_clause.append(SQL_LEFT_JOIN)
+                    from_clause.append(sql_alias(quote_column(self.snowflake.fact_name, sub_table.name), alias))
+                    from_clause.append(SQL_ON)
+                    from_clause.append(quote_column(alias, PARENT))
+                    from_clause.append(SQL_EQ)
+                    from_clause.append(quote_column(parent_alias, UID))
                     where_clause = sql_iso(where_clause) + SQL_AND + quote_column(alias, ORDER) + " > 0"
                 parent_alias = alias
 
@@ -499,24 +503,32 @@ class SetOpTable(InsertTable):
                 # PARENT TABLE
                 # NO NEED TO INCLUDE COLUMNS, BUT WILL INCLUDE ID AND ORDER
                 if nested_path == ".":
-                    from_clause += SQL_FROM + quote_column(self.snowflake.fact_name + " " + alias)
+                    from_clause.append(SQL_FROM)
+                    from_clause.append(sql_alias(quote_column(self.snowflake.fact_name), alias))
                 else:
                     parent_alias = alias = unichr(ord('a') + i - 1)
-                    from_clause += (
-                        SQL_LEFT_JOIN + quote_column(concat_field(self.snowflake.fact_name, sub_table.name)) + " " + alias +
-                        SQL_ON + quote_column(alias, PARENT) + " = " + quote_column(parent_alias, UID)
-                    )
+                    from_clause.append(SQL_LEFT_JOIN)
+                    from_clause.append(sql_alias(quote_column(self.snowflake.fact_name, sub_table.name), alias))
+                    from_clause.append(SQL_ON)
+                    from_clause.append(quote_column(alias, PARENT))
+                    from_clause.append(SQL_EQ)
+                    from_clause.append(quote_column(parent_alias, UID))
                     where_clause = sql_iso(where_clause) + SQL_AND + quote_column(parent_alias, ORDER) + " > 0"
                 parent_alias = alias
 
             elif startswith_field(nested_path, primary_nested_path):
                 # CHILD TABLE
                 # GET FIRST ROW FOR EACH NESTED TABLE
-                from_clause += (
-                    SQL_LEFT_JOIN + sql_alias(quote_column(concat_field(self.snowflake.fact_name, sub_table.name)), alias) +
-                    SQL_ON + quote_column(alias, PARENT) + " = " + quote_column(parent_alias, UID) +
-                    SQL_AND + quote_column(alias, ORDER) + " = 0"
-                )
+                from_clause.append(SQL_LEFT_JOIN)
+                from_clause.append(sql_alias(quote_column(self.snowflake.fact_name, sub_table.name), alias))
+                from_clause.append(SQL_ON)
+                from_clause.append(quote_column(alias, PARENT))
+                from_clause.append(SQL_EQ)
+                from_clause.append(quote_column(parent_alias, UID))
+                from_clause.append(SQL_AND)
+                from_clause.append(quote_column(alias, ORDER))
+                from_clause.append(SQL_EQ)
+                from_clause.append(SQL_ZERO)
 
                 # IMMEDIATE CHILDREN ONLY
                 done.append(nested_path)
@@ -533,12 +545,12 @@ class SetOpTable(InsertTable):
                 continue
 
         sql = SQL_UNION_ALL.join(
-            [
-                SQL_SELECT + sql_list(select_clause) +
-                from_clause +
-                SQL_WHERE + where_clause
-            ] +
-            children_sql
+            [ConcatSQL(
+                SQL_SELECT, sql_list(select_clause),
+                ConcatSQL(*from_clause),
+                SQL_WHERE, where_clause
+            )],
+            *children_sql
         )
 
         return sql

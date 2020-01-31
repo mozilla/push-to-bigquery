@@ -36,9 +36,14 @@ from mo_sql import (
     SQL_ORDERBY,
     SQL_STAR,
     SQL_LT,
-    SQL_AS)
+    SQL_AS,
+)
+from mo_times.dates import parse
 
+TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
 ALLOWED = string.ascii_letters + string.digits
+GUID = "_id"  # user accessible, unique value across many machines
+UID = "__id__"  # internal numeric id for single-database use
 
 
 def quote_column(name):
@@ -50,14 +55,16 @@ def quote_column(name):
 
 class ApiName(object):
     """
-    For calling BG API
+    REPRESENT NAMES FROM/TO THE BIGQUERY API
+    All names from the API should be wrapped with this
+    All names being sent to API should be of this type (name == text(ApiName(name))
     """
 
     __slots__ = ["values"]
 
     def __init__(self, *values):
         """
-        :param values:  API Names
+        :param values:  DOt-delimited API names
         """
         if any(not is_text(n) for n in values):
             Log.error("expecting strings")
@@ -103,35 +110,38 @@ def escape_name(name):
 def unescape_name(esc_name):
     if not isinstance(esc_name, ApiName):
         Log.error("expecting an api name")
-    if len(esc_name.values)>1:
+    if len(esc_name.values) > 1:
         Log.error("do not knwo how to handle")
-    parts = text(esc_name).split("_")
-    result = parts[:1]
-    for i, (p, q) in jx.chunk(parts[1:], 2):
-        if len(p) == 0:
-            result.append("_")
-        else:
-            result.append(hex2chr(p))
-        result.append(q)
-    name = "".join(result)
-    return name
+    try:
+        parts = text(esc_name).split("_")
+        result = parts[:1]
+        for i, (p, q) in jx.chunk(parts[1:], 2):
+            if len(p) == 0:
+                result.append("_")
+            else:
+                result.append(hex2chr(p))
+            result.append(q)
+        name = "".join(result)
+        return name
+    except Exception:
+        return esc_name
 
 
 def sql_alias(value, alias):
     if not isinstance(value, SQL) or not isinstance(alias, ApiName):
         Log.error("Expecting (SQL, ApiName) parameters")
-    return ConcatSQL((value, SQL_AS, quote_column(alias)))
+    return ConcatSQL(value, SQL_AS, quote_column(alias))
 
 
 def sql_call(func_name, parameters):
-    return ConcatSQL((SQL(func_name), sql_iso(JoinSQL(SQL_COMMA, parameters))))
+    return ConcatSQL(SQL(func_name), sql_iso(JoinSQL(SQL_COMMA, parameters)))
 
 
 def quote_value(value):
     if isinstance(value, (Mapping, list)):
         return SQL(".")
     elif isinstance(value, Date):
-        return SQL(text(value.unix))
+        return quote_value(value.format(TIMESTAMP_FORMAT))
     elif isinstance(value, Duration):
         return SQL(text(value.seconds))
     elif is_text(value):
@@ -159,9 +169,9 @@ def sql_eq(**item):
     """
     return SQL_AND.join(
         [
-            ConcatSQL((quote_column(k), SQL_EQ, quote_value(v)))
+            ConcatSQL(quote_column(k), SQL_EQ, quote_value(v))
             if v != None
-            else ConcatSQL((quote_column(k), SQL_IS_NULL))
+            else ConcatSQL(quote_column(k), SQL_IS_NULL)
             for k, v in item.items()
         ]
     )
@@ -175,7 +185,7 @@ def sql_lt(**item):
     :return: SQL
     """
     k, v = first(item.items())
-    return ConcatSQL((quote_column(k), SQL_LT, quote_value(v)))
+    return ConcatSQL(quote_column(k), SQL_LT, quote_value(v))
 
 
 def sql_query(command):

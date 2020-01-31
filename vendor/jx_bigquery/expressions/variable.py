@@ -9,8 +9,7 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_sqlite import GUID, quoted_GUID
-from jx_sqlite.sqlite import quote_column
+from jx_bigquery.sql import quote_column, GUID, ApiName
 
 from jx_base.expressions import Variable as Variable_
 from jx_base.queries import get_property_name
@@ -26,7 +25,7 @@ class Variable(Variable_):
         var_name = self.var
         if var_name == GUID:
             return wrap(
-                [{"name": ".", "sql": {"s": quoted_GUID}, "nested_path": ROOT_PATH}]
+                [{"name": ".", "sql": {"s": quote_column(ApiName(GUID))}, "nested_path": ROOT_PATH}]
             )
         cols = schema.leaves(var_name)
         if not cols:

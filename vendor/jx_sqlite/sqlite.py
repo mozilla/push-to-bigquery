@@ -18,7 +18,7 @@ from collections import Mapping, namedtuple
 from jx_base import jx_expression
 from mo_dots import Data, coalesce, unwraplist, listwrap, wrap
 from mo_files import File
-from mo_future import allocate_lock as _allocate_lock, text, first, is_text, zip_longest
+from mo_future import allocate_lock as _allocate_lock, text, first, is_text, zip_longest, binary_type
 from mo_json import BOOLEAN, INTEGER, NESTED, NUMBER, OBJECT, STRING
 from mo_kwargs import override
 from mo_logs import Log
@@ -55,10 +55,10 @@ from mo_sql import (
     SQL_DOT,
     SQL_LT, SQL_SPACE, SQL_AS, SQL_LIMIT)
 
-DEBUG = False
+DEBUG = True
 TRACE = True
 
-FORMAT_COMMAND = "Running command\n{{command|limit(1000)|indent}}"
+FORMAT_COMMAND = "Running command from \"{{file}}:{{line}}\"\n{{command|limit(1000)|indent}}"
 DOUBLE_TRANSACTION_ERROR = (
     "You can not query outside a transaction you have open already"
 )
@@ -393,7 +393,7 @@ class Sqlite(DB):
     def _process_command_item(self, command_item):
         query, result, signal, trace, transaction = command_item
 
-        with Timer("SQL Timing", silent=not self.debug):
+        with Timer("SQL Timing", verbose=self.debug):
             if transaction is None:
                 # THIS IS A TRANSACTIONLESS QUERY, DELAY IT IF THERE IS A CURRENT TRANSACTION
                 if self.transaction_stack:
@@ -543,7 +543,7 @@ class Transaction(object):
 
             # RUN THEM
             for c in todo:
-                self.db.debug and Log.note(FORMAT_COMMAND, command=c.command)
+                self.db.debug and Log.note(FORMAT_COMMAND, command=c.command, file=c.trace[0]['file'], line=c.trace[0]['line'])
                 self.db.db.execute(text(c.command))
         except Exception as e:
             Log.error("problem running commands", current=c, cause=e)
@@ -577,12 +577,15 @@ _simple_word = re.compile(r"^\w+$", re.UNICODE)
 
 
 def quote_column(*path):
-    if not path:
-        Log.error("expecting a name")
-    if any(not is_text(p) for p in path):
-        Log.error("expecting strings, not SQL")
+    if DEBUG:
+        if not path:
+            Log.error("expecting a name")
+        for p in path:
+            if not is_text(p):
+                Log.error("expecting strings, not {{type}}", type=p.__class__.__name__)
     try:
-        return ConcatSQL((SQL_SPACE, JoinSQL(SQL_DOT, [SQL(quote(p)) for p in path]), SQL_SPACE))
+        output = ConcatSQL(SQL_SPACE, JoinSQL(SQL_DOT, [SQL(quote(p)) for p in path]), SQL_SPACE)
+        return output
     except Exception as e:
         Log.error("Not expacted", cause=e)
 
@@ -590,14 +593,14 @@ def quote_column(*path):
 def sql_alias(value, alias):
     if not isinstance(value, SQL) or not is_text(alias):
         Log.error("Expecting (SQL, text) parameters")
-    return ConcatSQL((value, SQL_AS, quote_column(alias)))
+    return ConcatSQL(value, SQL_AS, quote_column(alias))
 
 
-def sql_call(func_name, parameters):
-    return ConcatSQL((
+def sql_call(func_name, *parameters):
+    return ConcatSQL(
         SQL(func_name),
         sql_iso(JoinSQL(SQL_COMMA, parameters))
-    ))
+    )
 
 
 def quote_value(value):
@@ -630,14 +633,12 @@ def sql_eq(**item):
     :param item: keyword parameters representing variable and value
     :return: SQL
     """
-    return SQL_AND.join(
-        [
-            ConcatSQL((quote_column(k), SQL_EQ, quote_value(v)))
-            if v != None
-            else ConcatSQL((quote_column(k), SQL_IS_NULL))
-            for k, v in item.items()
-        ]
-    )
+    return SQL_AND.join([
+        ConcatSQL(quote_column(text(k)), SQL_EQ, quote_value(v))
+        if v != None
+        else ConcatSQL(quote_column(text(k)), SQL_IS_NULL)
+        for k, v in item.items()
+    ])
 
 
 def sql_lt(**item):
@@ -648,7 +649,7 @@ def sql_lt(**item):
     :return: SQL
     """
     k, v = first(item.items())
-    return ConcatSQL((quote_column(k), SQL_LT, quote_value(v)))
+    return ConcatSQL(quote_column(k), SQL_LT, quote_value(v))
 
 
 def sql_query(command):
@@ -685,7 +686,7 @@ def sql_query(command):
         acc.append(SQL_LIMIT)
         acc.append(JoinSQL(SQL_COMMA, map(quote_value, listwrap(command.limit))))
 
-    return ConcatSQL(acc)
+    return ConcatSQL(*acc)
 
 
 def sql_create(table, properties, primary_key=None, unique=None):
@@ -713,22 +714,20 @@ def sql_create(table, properties, primary_key=None, unique=None):
         acc.append(sql_iso(sql_list([quote_column(c) for c in listwrap(unique)])))
 
     acc.append(SQL_CP)
-    return ConcatSQL(acc)
+    return ConcatSQL(*acc)
 
 
 def sql_insert(table, records):
     records = listwrap(records)
     keys = list({k for r in records for k in r.keys()})
     return ConcatSQL(
-        [
-            SQL_INSERT,
-            quote_column(table),
-            sql_iso(sql_list(map(quote_column, keys))),
-            SQL_VALUES,
-            sql_list(
-                sql_iso(sql_list([quote_value(r[k]) for k in keys])) for r in records
-            ),
-        ]
+        SQL_INSERT,
+        quote_column(table),
+        sql_iso(sql_list(map(quote_column, keys))),
+        SQL_VALUES,
+        sql_list(
+            sql_iso(sql_list([quote_value(r[k]) for k in keys])) for r in records
+        ),
     )
 
 

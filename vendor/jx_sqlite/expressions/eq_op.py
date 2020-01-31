@@ -25,7 +25,7 @@ from jx_sqlite.expressions.sql_script import SQLScript
 from jx_sqlite.expressions.when_op import WhenOp
 from mo_json import BOOLEAN
 from mo_logs import Log
-from mo_sql import SQL_FALSE, SQL_IS_NULL, SQL_OR, sql_iso
+from mo_sql import SQL_FALSE, SQL_IS_NULL, SQL_OR, sql_iso, SQL_EQ
 
 
 class EqOp(EqOp_):
@@ -59,7 +59,7 @@ class EqOp(EqOp_):
                     elif r.sql[t] is ZERO:
                         acc.append(l.sql[t])
                     else:
-                        acc.append(sql_iso(l.sql[t]) + " = " + sql_iso(r.sql[t]))
+                        acc.append(sql_iso(l.sql[t]) + SQL_EQ + sql_iso(r.sql[t]))
         if not acc:
             return FALSE.to_sql(schema)
         else:
@@ -80,11 +80,11 @@ class EqOp(EqOp_):
             return TRUE if builtin_ops["eq"](lhs.value, rhs.value) else FALSE
         else:
             rhs_missing = rhs.missing().partial_eval()
-            output = CaseOp(
+            output = self.lang[CaseOp(
                 [
                     WhenOp(lhs.missing(), **{"then": rhs_missing}),
                     WhenOp(rhs_missing, **{"then": FALSE}),
                     SqlEqOp([lhs, rhs]),
                 ]
-            ).partial_eval()
+            )].partial_eval()
             return output

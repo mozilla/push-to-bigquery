@@ -18,16 +18,16 @@ class Partition(object):
     __slots__ = ["field", "interval", "expire"]
 
     @override
-    def __new__(cls, field=None, interval=DAY, expire=NEVER, kwargs=None):
+    def __new__(cls, field=None, interval=DAY, expire=NEVER, flake=Null, kwargs=None):
         if field == None:
             return Null
         return object.__new__(cls)
 
     @override
-    def __init__(self, field, interval=DAY, expire=NEVER, schema=Null, kwargs=None):
-        column = first(schema.leaves(field))
+    def __init__(self, field, interval=DAY, expire=NEVER, flake=Null, kwargs=None):
+        column = first(flake.leaves(field))
         if not column:
-            Log.error("expecting {{field}} in schema for partitioning", field=field)
+            Log.error("expecting {{field}} in snowflake for partitioning", field=field)
 
         self.field = column.es_column
         self.interval = Duration(interval)

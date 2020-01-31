@@ -23,8 +23,10 @@ from jx_base.expressions._utils import operators, jx_expression, _jx_expression,
 from jx_base.language import BaseExpression, ID, is_expression, is_op
 from mo_dots import is_data, is_sequence, is_container
 from mo_future import items as items_, text
-from mo_json import BOOLEAN, OBJECT
+from mo_json import BOOLEAN, OBJECT, value2json
 from mo_logs import Log
+
+FALSE, Literal, is_literal, MissingOp, NotOp, NULL, Variable = [None]*7
 
 
 class Expression(BaseExpression):
@@ -35,8 +37,9 @@ class Expression(BaseExpression):
         self.simplified = False
         # SOME BASIC VERIFICATION THAT THESE ARE REASONABLE PARAMETERS
         if is_sequence(args):
-            if not all(t == None or is_expression(t) for t in args):
-                Log.error("Expecting an expression")
+            bad = [t for t in args if t != None and not is_expression(t)]
+            if bad:
+                Log.error("Expecting an expression, not {{bad}}", bad=bad)
         elif is_data(args):
             if not all(is_op(k, Variable) and is_literal(v) for k, v in args.items()):
                 Log.error("Expecting an {<variable>: <literal>}")
@@ -170,10 +173,6 @@ class Expression(BaseExpression):
         Log.note("this is slow on {{type}}", type=text(self_class.__name__))
         return self.__data__() == other.__data__()
 
+    def __str__(self):
+        return value2json(self.__data__(), pretty=True)
 
-from jx_base.expressions.false_op import FALSE
-from jx_base.expressions.null_op import NULL
-from jx_base.expressions.literal import Literal, is_literal
-from jx_base.expressions.missing_op import MissingOp
-from jx_base.expressions.not_op import NotOp
-from jx_base.expressions.variable import Variable

@@ -35,13 +35,11 @@ class CaseOp(CaseOp_):
             acc = SQL_ELSE + els_ + SQL_END
             for w in reversed(self.whens[0:-1]):
                 acc = ConcatSQL(
-                    (
                         SQL_WHEN,
                         BQLang[w.when].to_bq(schema, boolean=True)[0].sql.b,
                         SQL_THEN,
                         coalesce(BQLang[w.then].to_bq(schema)[0].sql[t], SQL_NULL),
                         acc,
-                    )
                 )
             output[t] = SQL_CASE + acc
         return wrap([{"name": ".", "sql": output}])

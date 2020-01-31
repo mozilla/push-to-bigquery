@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -14,9 +14,10 @@ from jx_base import Column, Table
 from jx_base.meta_columns import META_COLUMNS_NAME, META_COLUMNS_TYPE_NAME, SIMPLE_METADATA_COLUMNS, META_COLUMNS_DESC
 from jx_base.schema import Schema
 from jx_python import jx
-from mo_dots import Data, Null, is_data, is_list, unwraplist, wrap, set_default
-from mo_json import STRUCT
-from mo_json.typed_encoder import unnest_path, untype_path, untyped
+from mo_dots import Data, Null, is_data, is_list, unwraplist, wrap, set_default, listwrap, unwrap, split_field
+from mo_dots.lists import last
+from mo_json import STRUCT, NESTED
+from mo_json.typed_encoder import unnest_path, untype_path, untyped, NESTED_TYPE, get_nested_path
 from mo_logs import Log
 from mo_math import MAX
 from mo_threads import Lock, MAIN_THREAD, Queue, Thread, Till
@@ -112,7 +113,9 @@ class ColumnList(Table, jx_base.Container):
             Log.note("{{num}} columns loaded", num=result.hits.total)
             with self.locker:
                 for r in result.hits.hits._source:
-                    self._add(doc_to_column(r))
+                    col = doc_to_column(r)
+                    if col:
+                        self._add(col)
 
         except Exception as e:
             Log.warning(
@@ -144,8 +147,9 @@ class ColumnList(Table, jx_base.Container):
                         with self.locker:
                             for r in result.hits.hits._source:
                                 c = doc_to_column(r)
-                                self._add(c)
-                                self.last_load = MAX((self.last_load, c.last_updated))
+                                if c:
+                                    self._add(c)
+                                    self.last_load = MAX((self.last_load, c.last_updated))
 
                     while not please_stop:
                         updates = self.for_es_update.pop_all()
@@ -447,13 +451,41 @@ class ColumnList(Table, jx_base.Container):
 
 
 def doc_to_column(doc):
-    kwargs = set_default(untyped(doc), {"last_updated": Date.now()-YEAR})
-    return Column(**wrap(kwargs))
+    try:
+        doc = wrap(untyped(doc))
+        if not doc.last_updated:
+            doc.last_updated = Date.now()-YEAR
+        doc.multi = 1001 if doc.es_type == "nested" else doc.multi
+        doc.nested_path = tuple(listwrap(doc.nested_path))
+        if last(split_field(doc.es_column)) == NESTED_TYPE and doc.es_type != "nested":
+            doc.es_type = "nested"
+            doc.jx_type = NESTED
+            doc.multi = 1001
+            doc.last_updated = Date.now()
+
+        expected_nested_path = get_nested_path(doc.es_column)
+        if len(doc.nested_path) > 1 and doc.nested_path[-2] == '.':
+            doc.nested_path = doc.nested_path[:-1]
+        if untype_path(doc.es_column) == doc.es_column:
+            if doc.nested_path != (".",):
+                if doc.es_index in {"repo"}:
+                    pass
+                else:
+                    Log.note("not expected")
+                    doc.nested_path = expected_nested_path
+        else:
+            if doc.nested_path != expected_nested_path:
+                doc.nested_path = expected_nested_path
+        return Column(**doc)
+    except Exception:
+        doc.nested_path = ["."]
+        mark_as_deleted(Column(**doc))
+        return None
 
 
 def mark_as_deleted(col):
     col.count = 0
     col.cardinality = 0
-    col.multi = 0
+    col.multi = 1001 if col.es_type == "nested" else 0,
     col.partitions = None
     col.last_updated = Date.now()

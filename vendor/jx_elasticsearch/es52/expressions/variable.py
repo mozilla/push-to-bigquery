@@ -5,12 +5,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import Variable as Variable_
-from jx_elasticsearch.es52.util import MATCH_NONE, es_and, es_exists
+from jx_elasticsearch.es52.expressions.and_op import es_and
+from jx_elasticsearch.es52.expressions.exists_op import es_exists
+from jx_elasticsearch.es52.expressions.false_op import MATCH_NONE
 from mo_future import first
 from mo_json import BOOLEAN, NESTED, OBJECT
 

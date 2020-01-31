@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -15,7 +15,7 @@ from jx_elasticsearch.es52.painless._utils import empty_string_script, NUMBER_TO
 from jx_elasticsearch.es52.painless.coalesce_op import CoalesceOp
 from jx_elasticsearch.es52.painless.es_script import EsScript
 from jx_elasticsearch.es52.painless.first_op import FirstOp
-from mo_json import BOOLEAN, INTEGER, IS_NULL, NUMBER, STRING
+from mo_json import BOOLEAN, INTEGER, NUMBER, STRING
 from mo_logs.strings import expand_template
 
 
@@ -29,7 +29,7 @@ class StringOp(StringOp_):
                 [StringOp(t).partial_eval() for t in value.frum.terms]
             ).to_es_script(schema)
 
-        if value.miss is TRUE or value.type is IS_NULL:
+        if value.miss is TRUE:
             return empty_string_script
         elif value.type == BOOLEAN:
             return EsScript(

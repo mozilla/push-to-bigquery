@@ -11,8 +11,8 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import DateOp as DateOp_
 from jx_sqlite.expressions._utils import check
+from jx_sqlite.sqlite import quote_value
 from mo_dots import wrap
-from jx_mysql.mysql import quote_value
 
 
 class DateOp(DateOp_):

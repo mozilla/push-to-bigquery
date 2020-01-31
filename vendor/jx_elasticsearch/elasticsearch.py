@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
@@ -16,6 +16,7 @@ from jx_base import Column
 from jx_python import jx
 from mo_dots import Data, FlatList, Null, ROOT_PATH, SLOT, coalesce, concat_field, is_data, is_list, listwrap, \
     literal_field, set_default, split_field, wrap
+from mo_dots.lists import last
 from mo_files import File, mimetype
 from mo_files.url import URL
 from mo_future import binary_type, generator_types, is_binary, is_text, items, text
@@ -27,8 +28,8 @@ from mo_logs import Log, strings
 from mo_logs.exceptions import Except
 from mo_math import is_integer, is_number
 from mo_math.randoms import Random
-from mo_threads import Lock, ThreadedQueue, Till, THREAD_STOP
-from mo_times import Date, Timer, HOUR
+from mo_threads import Lock, ThreadedQueue, Till, THREAD_STOP, Thread, MAIN_THREAD
+from mo_times import Date, Timer, HOUR, dates
 from pyLibrary.convert import quote2string, value2number
 from pyLibrary.env import http
 
@@ -347,7 +348,7 @@ class Index(object):
             Log.error("records must have __iter__")
 
         try:
-            with Timer("Add {{num}} documents to {{index}}", {"num": "unknown", "index": self.settings.index}, silent=not self.debug):
+            with Timer("Add document(s) to {{index}}", {"index": self.settings.index}, verbose=self.debug):
                 wait_for_active_shards = coalesce(
                     self.settings.wait_for_active_shards,
                     {"one": 1, None: None}[self.settings.consistency]
@@ -420,7 +421,7 @@ class Index(object):
         for n in jx.reverse(split_field(name)):
             if n == NESTED_TYPE:
                 details = {"properties": {n: set_default(details, {"type": "nested", "dynamic": True})}}
-            elif n.startswith(TYPE_PREFIX) or details['type'] in ES_PRIMITIVE_TYPES:
+            elif n.startswith(TYPE_PREFIX) or details.get('type', 'object') in ES_PRIMITIVE_TYPES:
                 details = {"properties": {n: details}}
             else:
                 details = {"properties": {n: set_default(details, {"type": "object", "dynamic": True})}}
@@ -470,18 +471,15 @@ class Index(object):
         else:
             Log.error("Do not know how to handle ES version {{version}}", version=self.cluster.version)
 
-    def search(self, query, timeout=None, retry=None):
+    def search(self, query, timeout=None, retry=None, scroll=None):
         query = wrap(query)
         try:
-            if self.debug:
-                if len(query.facets.keys()) > 20:
-                    show_query = query.copy()
-                    show_query.facets = {k: "..." for k in query.facets.keys()}
-                else:
-                    show_query = query
-                Log.note("Query:\n{{query|indent}}", query=show_query)
+            suffix = "/_search?scroll=" + scroll if scroll else "/_search"
+            url = self.path + suffix
+
+            DEBUG and Log.note("Query: {{url}}\n{{query|indent}}", url=url, query=query)
             return self.cluster.post(
-                self.path + "/_search",
+                url,
                 data=query,
                 timeout=coalesce(timeout, self.settings.timeout),
                 retry=retry
@@ -493,6 +491,7 @@ class Index(object):
                 query=query,
                 cause=e
             )
+
 
     def threaded_queue(self, batch_size=None, max_size=None, period=None, silent=False):
         """
@@ -591,6 +590,7 @@ class Cluster(object):
         limit_replicas=None,
         read_only=False,
         typed=None,
+        refresh_interval=None,
         kwargs=None
     ):
         if kwargs.tjson != None:
@@ -628,7 +628,17 @@ class Cluster(object):
         known_index = self.known_indices.get(key)
         if not known_index:
             known_index = Index(kwargs=kwargs, cluster=self)
-            self.known_indices[key]=known_index
+            self.known_indices[key] = known_index
+
+        def set_refresh(please_stop):
+            try:
+                known_index.set_refresh_interval(seconds=int(dates.parse(kwargs.refresh_interval).seconds))
+            except Exception as e:
+                Log.warning("could not set refresh interval for {{index}}", index=known_index.settings.index, cause=e)
+        if kwargs.refresh_interval:
+            Thread.run("setting refresh interval", set_refresh, parent_thread=MAIN_THREAD)
+        else:
+            pass
         return known_index
 
 
@@ -1285,12 +1295,15 @@ class Alias(object):
                             message=status._shards.failures[0].reason
                         )
 
-    def search(self, query, timeout=None):
+    def search(self, query, timeout=None, scroll=None):
         query = wrap(query)
         try:
-            self.debug and Log.note("Query {{path}}\n{{query|indent}}", path=self.path + "/_search", query=query)
+            suffix = "/_search?scroll=" + scroll if scroll else "/_search"
+            path = self.path + suffix
+            self.debug and Log.note("Query {{path}}\n{{query|indent}}", path=path, query=query)
+
             return self.cluster.post(
-                self.path + "/_search",
+                path,
                 data=query,
                 timeout=coalesce(timeout, self.settings.timeout)
             )
@@ -1299,6 +1312,25 @@ class Alias(object):
                 "Problem with search (path={{path}}):\n{{query|indent}}",
                 path=self.path + "/_search",
                 query=query,
+                cause=e
+            )
+
+    def scroll(self, scroll_id):
+        try:
+            # POST /_search/scroll
+            # {
+            #     "scroll" : "1m",
+            #     "scroll_id" : "DXF1ZXJ5QW5kRmV0Y2gBAAAAAAAAAD4WYm9laVYtZndUQlNsdDcwakFMNjU1QQ=="
+            # }
+            return self.cluster.post(
+                "_search/scroll",
+                data={"scroll": "5m", "scroll_id": scroll_id}
+            )
+        except Exception as e:
+            Log.error(
+                "Problem with scroll (scroll_id={{scroll_id}})",
+                path= "_search/scroll",
+                scroll_id=scroll_id,
                 cause=e
             )
 
@@ -1340,6 +1372,7 @@ def parse_properties(parent_index_name, parent_name, nested_path, esProperties):
                 es_column=column_name,
                 es_type="nested",
                 jx_type=NESTED,
+                multi=1001,
                 last_updated=Date.now(),
                 nested_path=nested_path
             ))

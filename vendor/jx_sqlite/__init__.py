@@ -18,9 +18,15 @@ from jx_base import DataClass
 from mo_dots import Data, concat_field, is_data, is_list, join_field, split_field, is_sequence
 from mo_future import is_text, text
 from mo_json import BOOLEAN, NESTED, NUMBER, OBJECT, STRING, json2value
+from mo_logs import Log
 from mo_math.randoms import Random
 from mo_times import Date
 from jx_sqlite.sqlite import quote_column
+
+
+DIGITS_TABLE = "__digits__"
+ABOUT_TABLE = "meta.about"
+
 
 GUID = "_id"  # user accessible, unique value across many machines
 UID = "__id__"  # internal numeric id for single-database use
@@ -29,7 +35,6 @@ PARENT = "__parent__"
 COLUMN = "__column"
 
 ALL_TYPES = "bns"
-
 
 
 def unique_name():
@@ -56,7 +61,7 @@ def column_key(k, v):
 POS_INF = float("+inf")
 
 
-def get_type(v):
+def get_jx_type(v):
     if v == None:
         return None
     elif isinstance(v, bool):
@@ -113,6 +118,8 @@ def is_type(value, type):
 
 
 def typed_column(name, type_):
+    if len(type_) > 1:
+        Log.error("not expected")
     if type_ == "nested":
         type_ = "object"
     return concat_field(name, "$" + type_)

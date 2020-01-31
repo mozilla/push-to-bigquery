@@ -79,7 +79,6 @@ class BQLScript(SQLScript_, SQL):
             return wrap(
                 {
                     json_type_to_bq_type[self.data_type]: ConcatSQL(
-                        (
                             SQL_CASE,
                             SQL_WHEN,
                             SQL_NOT,
@@ -87,7 +86,6 @@ class BQLScript(SQLScript_, SQL):
                             SQL_THEN,
                             self.expr,
                             SQL_END,
-                        )
                     )
                 }
             )

@@ -5,15 +5,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import EsScript as EsScript_, FALSE, NULL, ONE, TRUE, ZERO
-from jx_elasticsearch.es52.painless._utils import box
-from jx_elasticsearch.es52.util import es_script
-from mo_dots import coalesce
+from mo_dots import coalesce, wrap
 from mo_future import PY2, text
+from mo_json import BOOLEAN, INTEGER, NUMBER
 from mo_logs import Log
 
 
@@ -84,3 +83,24 @@ class EsScript(EsScript_):
             return True
         else:
             return False
+
+
+def box(script):
+    """
+    :param es_script:
+    :return: TEXT EXPRESSION WITH NON OBJECTS BOXED
+    """
+    if script.type is BOOLEAN:
+        return "Boolean.valueOf(" + text(script.expr) + ")"
+    elif script.type is INTEGER:
+        return "Integer.valueOf(" + text(script.expr) + ")"
+    elif script.type is NUMBER:
+        return "Double.valueOf(" + text(script.expr) + ")"
+    else:
+        return script.expr
+
+
+def es_script(term):
+    return wrap({"script": {"lang": "painless", "source": term}})
+
+

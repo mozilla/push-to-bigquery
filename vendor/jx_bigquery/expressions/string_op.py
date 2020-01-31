@@ -9,7 +9,7 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_sqlite.sqlite import quote_value
+from jx_bigquery.sql import quote_value
 
 from jx_base.expressions import StringOp as StringOp_
 from jx_bigquery.expressions._utils import BQLang, check

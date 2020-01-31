@@ -5,12 +5,16 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import Literal as Literal_
-from jx_elasticsearch.es52.painless._utils import false_script, null_script, true_script, MIN_INT32, MAX_INT32
+from jx_base.expressions import Literal as Literal_, ONE
+from jx_elasticsearch.es52.painless import _utils
+from jx_elasticsearch.es52.painless.null_op import null_script
+from jx_elasticsearch.es52.painless.true_op import true_script
+from jx_elasticsearch.es52.painless.false_op import false_script
+from jx_elasticsearch.es52.painless._utils import MIN_INT32, MAX_INT32
 from jx_elasticsearch.es52.painless.es_script import EsScript
 from mo_dots import FlatList, data_types
 from mo_future import integer_types, text
@@ -67,3 +71,6 @@ class Literal(Literal_):
                 )
 
         return _convert(self._value)
+
+
+_utils.Literal = Literal
