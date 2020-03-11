@@ -10,9 +10,8 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import sys
-from collections import OrderedDict
 
-from mo_future import binary_type, generator_types, is_binary, is_text, text
+from mo_future import binary_type, generator_types, is_binary, is_text, text, OrderedDict
 
 from mo_dots.utils import CLASS, OBJ, get_logger, get_module
 
@@ -97,12 +96,17 @@ def unliteral_field(field):
 def tail_field(field):
     """
     RETURN THE FIRST STEP IN PATH, ALONG WITH THE REMAINING TAIL
+    IN (first, rest) PAIR
     """
     if field == "." or field==None:
         return ".", "."
     elif "." in field:
         if "\\." in field:
-            return tuple(k.replace("\a", ".") for k in field.replace("\\.", "\a").split(".", 1))
+            path = field.replace("\\.", "\a").split(".", 1)
+            if len(path) == 1:
+                return path[0].replace("\a", "."), "."
+            else:
+                return tuple(k.replace("\a", ".") for k in path)
         else:
             return field.split(".", 1)
     else:
@@ -209,6 +213,8 @@ def set_default(*params):
     """
     UPDATES FIRST dict WITH THE MERGE RESULT, WHERE MERGE RESULT IS DEFINED AS:
     FOR EACH LEAF, RETURN THE HIGHEST PRIORITY LEAF VALUE
+
+    RECURSIVE VERSION OF params[0].update(*reversed(params));
 
     :param params:  dicts IN PRIORITY ORDER, FIRST IS HIGHES PRIORITY
     :return: FIRST dict OR NEW dict WITH PROPERTIES SET
@@ -537,14 +543,16 @@ def _wrap_leaves(value):
 
 
 def unwrap(v):
+    if v is None:
+        return None
     _type = _get(v, CLASS)
-    if _type is Data:
+    if _type is NullType:
+        return None
+    elif _type is Data:
         d = _get(v, SLOT)
         return d
     elif _type is FlatList:
         return v.list
-    elif _type is NullType:
-        return None
     elif _type is DataObject:
         d = _get(v, OBJ)
         if _get(d, CLASS) in data_types:

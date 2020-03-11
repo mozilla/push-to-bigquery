@@ -122,6 +122,8 @@ def schema_type(value):
     jt = python_type_to_json_type[value.__class__]
     if jt == TIME:
         v = parse(value).format(TIMESTAMP_FORMAT)
+    elif jt == NUMBER:
+        v = float(value)
     else:
         v = value
     return v, json_type_to_inserter_type[jt], jt

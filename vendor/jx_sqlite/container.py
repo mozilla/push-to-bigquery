@@ -17,7 +17,7 @@ from jx_sqlite import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
 from jx_sqlite.namespace import Namespace
 from jx_sqlite.query_table import QueryTable
 from jx_sqlite.snowflake import Snowflake
-from mo_future import first, PY3
+from mo_future import first, PY3, NEXT
 from mo_kwargs import override
 from mo_logs import Log
 from mo_sql import (
@@ -85,10 +85,8 @@ class Container(object):
                 while top_id < max_id:
                     yield top_id
                     top_id += 1
-        if PY3:
-            return output().__next__
-        else:
-            return output().next
+
+        return NEXT(output())
 
     def setup(self):
         if not self.db.about(ABOUT_TABLE):

@@ -9,14 +9,15 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+import ast
 import re
+from collections import namedtuple
 from copy import deepcopy
 
 from jx_base import Column
 from jx_python import jx
 from mo_dots import Data, FlatList, Null, ROOT_PATH, SLOT, coalesce, concat_field, is_data, is_list, listwrap, \
-    literal_field, set_default, split_field, wrap
-from mo_dots.lists import last
+    literal_field, set_default, split_field, wrap, lists
 from mo_files import File, mimetype
 from mo_files.url import URL
 from mo_future import binary_type, generator_types, is_binary, is_text, items, text
@@ -25,13 +26,12 @@ from mo_json.typed_encoder import BOOLEAN_TYPE, EXISTS_TYPE, NESTED_TYPE, NUMBER
     json_type_to_inserter_type
 from mo_kwargs import override
 from mo_logs import Log, strings
-from mo_logs.exceptions import Except
+from mo_logs.exceptions import Except, suppress_exception
 from mo_math import is_integer, is_number
 from mo_math.randoms import Random
 from mo_threads import Lock, ThreadedQueue, Till, THREAD_STOP, Thread, MAIN_THREAD
 from mo_times import Date, Timer, HOUR, dates
-from pyLibrary.convert import quote2string, value2number
-from pyLibrary.env import http
+from mo_http import http
 
 DEBUG = True
 DEBUG_METADATA_UPDATE = False
@@ -241,54 +241,20 @@ class Index(object):
 
         if self.settings.read_only:
             Log.error("Index opened in read only mode, no changes allowed")
-        self.cluster.get_metadata()
 
         self.debug and Log.note("Delete bugs:\n{{query}}", query=filter)
 
-        if self.cluster.info.version.number.startswith("0.90"):
-            query = {"filtered": {
-                "query": {"match_all": {}},
-                "filter": filter
-            }}
-
-            result = self.cluster.delete(
-                self.path + "/_query",
-                data=value2json(query),
-                timeout=600,
-                params={"consistency": self.settings.consistency}
-            )
-            for name, status in result._indices.items():
-                if status._shards.failed > 0:
-                    Log.error("Failure to delete from {{index}}", index=name)
-
-        elif self.cluster.info.version.number.startswith("1."):
-            query = {"query": {"filtered": {
-                "query": {"match_all": {}},
-                "filter": filter
-            }}}
-
-            result = self.cluster.delete(
-                self.path + "/_query",
-                data=value2json(query),
-                timeout=600,
-                params={"consistency": self.settings.consistency}
-            )
-            for name, status in result._indices.items():
-                if status._shards.failed > 0:
-                    Log.error("Failure to delete from {{index}}", index=name)
-
-        elif self.cluster.info.version.number.startswith(("5.", "6.")):
+        if self.cluster.info.version.number.startswith(("5.", "6.")):
             query = {"query": filter}
-            if filter.terms.bug_id['~n~'] != None:
-                Log.warning("filter is not typed")
 
             wait_for_active_shards = coalesce(  # EARLIER VERSIONS USED "consistency" AS A PARAMETER
                 self.settings.wait_for_active_shards,
                 {"one": 1, None: None}[self.settings.consistency]
             )
-
+            path = self.path + "/_delete_by_query"
+            DEBUG and Log.note("Delete: {{path}}\n{{query}}", path=path, query=query)
             result = self.cluster.post(
-                self.path + "/_delete_by_query",
+                path,
                 json=query,
                 timeout=600,
                 params={"wait_for_active_shards": wait_for_active_shards}
@@ -309,28 +275,6 @@ class Index(object):
         if result.failures:
             Log.error("Failure to delete fom {{index}}:\n{{data|pretty}}", index=self.settings.index, data=result)
 
-    def _data_bytes(self, records):
-        """
-        :param records:  EXPECTING METHOD THAT PRODUCES A GENERATOR
-        :return: GENERATOR OF BYTES FOR POSTING TO ES
-        """
-        for r in records:
-            if '_id' in r or 'value' not in r:  # I MAKE THIS MISTAKE SO OFTEN, I NEED A CHECK
-                Log.error('Expecting {"id":id, "value":document} form.  Not expecting _id')
-            id, version, json_bytes = self.encode(r)
-
-            if DEBUG and not json_bytes.startswith('{'):
-                self.encode(r)
-                Log.error("string {{doc}} will not be accepted as a document", doc=json_bytes)
-
-            if version:
-                yield value2json({"index": {"_id": id, "version": int(version), "version_type": "external_gte"}}).encode('utf8')
-            else:
-                yield ('{"index":{"_id": ' + value2json(id) + '}}').encode('utf8')
-            yield LF
-            yield json_bytes.encode('utf8')
-            yield LF
-
     def extend(self, records):
         """
         records - MUST HAVE FORM OF
@@ -344,6 +288,8 @@ class Index(object):
             return
         if isinstance(records, generator_types):
             Log.error("single use generators no longer accepted")
+        if is_text(records):
+            Log.error("records must have __iter__")
         if not hasattr(records, "__iter__"):
             Log.error("records must have __iter__")
 
@@ -356,7 +302,8 @@ class Index(object):
 
                 response = self.cluster.post(
                     self.path + "/_bulk",
-                    data=self._data_bytes(records),
+                    data=IterableBytes(self.encode, records),
+                    zip=True,
                     headers={"Content-Type": "application/x-ndjson"},
                     timeout=self.settings.timeout,
                     retry=self.settings.retry,
@@ -365,11 +312,7 @@ class Index(object):
                 items = response["items"]
 
                 fails = []
-                if self.cluster.version.startswith("0.90."):
-                    for i, item in enumerate(items):
-                        if not item.index.ok:
-                            fails.append(i)
-                elif self.cluster.version.startswith(("1.4.", "1.5.", "1.6.", "1.7.", "5.", "6.")):
+                if self.cluster.version.startswith(("1.4.", "1.5.", "1.6.", "1.7.", "5.", "6.")):
                     for i, item in enumerate(items):
                         if item.index.status == 409:  # 409 ARE VERSION CONFLICTS
                             if "version conflict" not in item.index.error.reason:
@@ -380,7 +323,7 @@ class Index(object):
                     Log.error("version not supported {{version}}", version=self.cluster.version)
 
                 if fails:
-                    lines = list(self._data_bytes(records))
+                    lines = list(IterableBytes(self.encode, records))
                     cause = [
                         Except(
                             template="{{status}} {{error}} (and {{some}} others) while loading line id={{id}} into index {{index|quote}} (typed={{typed}}):\n{{line}}",
@@ -400,7 +343,7 @@ class Index(object):
             pass
         except Exception as e:
             e = Except.wrap(e)
-            lines = list(self._data_bytes(records))
+            lines = list(IterableBytes(self.encode, records))
             if e.message.startswith("sequence item "):
                 Log.error("problem with {{data}}", data=text(repr(lines[int(e.message[14:16].strip())])), cause=e)
             Log.error("problem sending to ES", cause=e)
@@ -445,19 +388,7 @@ class Index(object):
         else:
             interval = text(seconds) + "s"
 
-        if self.cluster.version.startswith("0.90."):
-            response = self.cluster.put(
-                "/" + self.settings.index + "/_settings",
-                data='{"index":{"refresh_interval":' + value2json(interval) + '}}',
-                **kwargs
-            )
-
-            result = json2value(response.all_content.decode('utf8'))
-            if not result.ok:
-                Log.error("Can not set refresh interval ({{error}})", {
-                    "error": response.all_content.decode('utf8')
-                })
-        elif self.cluster.version.startswith(("1.4.", "1.5.", "1.6.", "1.7.", "5.", "6.")):
+        if self.cluster.version.startswith(("1.4.", "1.5.", "1.6.", "1.7.", "5.", "6.")):
             result = self.cluster.put(
                 "/" + self.settings.index + "/_settings",
                 data={"index": {"refresh_interval": interval}},
@@ -477,7 +408,7 @@ class Index(object):
             suffix = "/_search?scroll=" + scroll if scroll else "/_search"
             url = self.path + suffix
 
-            DEBUG and Log.note("Query: {{url}}\n{{query|indent}}", url=url, query=query)
+            self.debug and Log.note("Query: {{url}}\n{{query|indent}}", url=url, query=query)
             return self.cluster.post(
                 url,
                 data=query,
@@ -713,10 +644,10 @@ class Cluster(object):
     def get_best_matching_index(self, index, alias=None):
         indexes = jx.sort(
             [
-                ai_pair
+                p
                 for pattern in [re.escape(index) + SUFFIX_PATTERN]
-                for ai_pair in self.get_aliases()
-                for a, i in [(ai_pair.alias, ai_pair.index)]
+                for p in self.get_aliases()
+                for i, a in [(p.index, p.alias)]
                 if (a == index and alias == None) or
                    (re.match(pattern, i) and alias == None) or
                    (i == index and (alias == None or a == None or a == alias))
@@ -731,9 +662,9 @@ class Cluster(object):
         ALIAS YET BECAUSE INCOMPLETE
         """
         output = sort([
-            a.index
-            for a in self.get_aliases()
-            if re.match(re.escape(alias) + "\\d{8}_\\d{6}", a.index) and not a.alias
+            p.index
+            for p in self.get_aliases()
+            if re.match(re.escape(alias) + "\\d{8}_\\d{6}", p.index) and not p.alias
         ])
         return output
 
@@ -870,19 +801,19 @@ class Cluster(object):
         except Exception as e:
             Log.error("Problem with call to {{url}}", url=url, cause=e)
 
-    def get_aliases(self):
+    def get_aliases(self, after=None):
         """
         RETURN LIST OF {"alias":a, "index":i} PAIRS
         ALL INDEXES INCLUDED, EVEN IF NO ALIAS {"alias":Null}
         """
-        for index, desc in self.get_metadata().indices.items():
+        for index, desc in self.get_metadata(after=after).indices.items():
             if not desc["aliases"]:
-                yield wrap({"index": index})
+                yield Data(index=index)
             elif desc['aliases'][0] == index:
                 Log.error("should not happen")
             else:
-                for a in desc["aliases"]:
-                    yield wrap({"index": index, "alias": a})
+                for alias in desc["aliases"]:
+                    yield Data(index=index, alias=alias)
 
     def get_metadata(self, after=None):
         now = Date.now()
@@ -967,8 +898,10 @@ class Cluster(object):
                 Log.error(quote2string(details.error))
             if details._shards.failed > 0:
                 Log.error(
-                    "Shard failures {{failures|indent}}",
-                    failures=details._shards.failures.reason
+                    "{{num}} orf {{total}} shard failures {{failures|indent}}",
+                    failures=details._shards.failures.reason,
+                    num=details._shards.failed,
+                    total=details._shards.total
                 )
             return details
         except Exception as e:
@@ -1057,7 +990,7 @@ class Cluster(object):
         try:
             response = http.put(url, **kwargs)
             if response.status_code not in [200]:
-                Log.error(response.reason + ": " + response.content).decode('utf8')
+                Log.error("{{reason}}: {{content|limit(3000)}}", reason=response.reason, content=response.content)
             if not response.content:
                 return Null
 
@@ -1197,7 +1130,7 @@ class Alias(object):
                 settings = self.cluster.get("/" + full_name + "/_mapping")[full_name]
             else:
                 index = self.cluster.get_best_matching_index(alias).index
-                settings = self.cluster.get_metadata().indices[index]
+                settings = self.cluster.get_metadata().indices[literal_field(index)]
 
             # FIND MAPPING WITH MOST PROPERTIES (AND ASSUME THAT IS THE CANONICAL TYPE)
             type, props = _get_best_type_from_mapping(settings.mappings)
@@ -1255,12 +1188,7 @@ class Alias(object):
     def delete(self, filter):
         self.cluster.get_metadata()
 
-        if self.cluster.info.version.number.startswith("0.90"):
-            query = {"filtered": {
-                "query": {"match_all": {}},
-                "filter": filter
-            }}
-        elif self.cluster.info.version.number.startswith("1."):
+        if self.cluster.info.version.number.startswith("1."):
             query = {"query": {"filtered": {
                 "query": {"match_all": {}},
                 "filter": filter
@@ -1822,3 +1750,55 @@ _merge_type = {
         "nested": "nested"
     }
 }
+
+
+class IterableBytes(object):
+    def __init__(self, encode, records):
+        """
+        DO NOT SERIALIZE TO BYTES UNTIL REQUIRED
+
+        :param encode: FUNCTION TO ENCODE INTO JSON TEXT
+        :param records: EXPECTING OBJECT WITH __iter__()
+        """
+        self.encode = encode
+        self.records = records
+
+    def __iter__(self):
+        for r in self.records:
+            if '_id' in r or 'value' not in r:  # I MAKE THIS MISTAKE SO OFTEN, I NEED A CHECK
+                Log.error('Expecting {"id":id, "value":document} form.  Not expecting _id')
+            id, version, json_text = self.encode(r)
+
+            if DEBUG and not json_text.startswith('{'):
+                self.encode(r)
+                Log.error("string {{doc}} will not be accepted as a document", doc=json_text)
+
+            if version:
+                yield value2json({"index": {"_id": id, "version": int(version), "version_type": "external_gte"}}).encode('utf8')
+            else:
+                yield ('{"index":{"_id": ' + value2json(id) + '}}').encode('utf8')
+            yield LF
+            yield json_text.encode('utf8')
+            yield LF
+
+
+lists.sequence_types = lists.sequence_types + (IterableBytes,)
+
+
+def quote2string(value):
+    with suppress_exception:
+        return ast.literal_eval(value)
+
+
+def value2number(v):
+    try:
+        if isinstance(v, float) and round(v, 0) != v:
+            return v
+            # IF LOOKS LIKE AN INT, RETURN AN INT
+        return int(v)
+    except Exception:
+        try:
+            return float(v)
+        except Exception as e:
+            Log.error("Not a number ({{value}})",  value= v, cause=e)
+

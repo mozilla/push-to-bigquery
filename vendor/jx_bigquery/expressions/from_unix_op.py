@@ -23,7 +23,7 @@ class FromUnixOp(FromUnixOp_):
 
         output = SQLScript(
             data_type=TIME,
-            expr=sql_call("FROM_UNIXTIME", (v,)),
+            expr=sql_call("FROM_UNIXTIME", v),
             frum=self,
             miss=self.missing(),
             many=False,

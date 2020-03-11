@@ -11,24 +11,22 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from collections import Mapping
-
 from jx_base import Column, generateGuid
 from jx_base.expressions import jx_expression
 from jx_sqlite import GUID, ORDER, PARENT, UID, get_if_type, get_jx_type, typed_column, untyped_column
 from jx_sqlite.base_table import BaseTable
 from jx_sqlite.expressions._utils import json_type_to_sql_type
+from jx_sqlite.sqlite import json_type_to_sqlite_type, quote_column, quote_value, sql_alias
 from mo_collections.queue import Queue
-from mo_dots import Data, Null, concat_field, listwrap, startswith_field, unwrap, unwraplist, wrap, \
+from mo_dots import Data, Null, concat_field, listwrap, startswith_field, unwrap, wrap, \
     is_many
 from mo_future import text, first
 from mo_json import STRUCT, NESTED, OBJECT
 from mo_logs import Log
-from mo_times import Date
 from mo_sql import SQL_AND, SQL_FROM, SQL_INNER_JOIN, SQL_NULL, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, \
     sql_iso, sql_list, SQL_VALUES, SQL_INSERT, ConcatSQL, SQL_EQ, SQL_UPDATE, SQL_SET, SQL_ONE, SQL_DELETE, SQL_ON, \
     SQL_COMMA
-from jx_sqlite.sqlite import json_type_to_sqlite_type, quote_column, quote_value, sql_alias
+from mo_times import Date
 
 
 class InsertTable(BaseTable):
@@ -244,7 +242,7 @@ class InsertTable(BaseTable):
                 row = {GUID: guid, UID: uid, PARENT: parent_id, ORDER: order}
                 insertion.rows.append(row)
 
-            if isinstance(data, Mapping):
+            if is_data(data):
                 items = [(concat_field(full_path, k), v ) for k, v in wrap(data).leaves()]
             else:
                 # PRIMITIVE VALUES

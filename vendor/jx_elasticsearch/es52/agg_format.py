@@ -12,15 +12,17 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions import TupleOp
 from jx_base.language import is_op
 from jx_base.query import canonical_aggregates
-from jx_elasticsearch.es52.agg_op import aggs_iterator, count_dim
 from jx_python.containers.cube import Cube
 from mo_collections.matrix import Matrix
 from mo_dots import Data, coalesce, is_list, split_field, wrap
 from mo_files import mimetype
-from mo_future import sort_using_key
+from mo_future import sort_using_key, next
 from mo_json import value2json
 from mo_logs import Log
 from mo_logs.strings import quote
+
+
+aggs_iterator, count_dim = [None]*2
 
 
 def format_cube(aggs, es_query, query, decoders, all_selects):
@@ -96,7 +98,7 @@ def format_table(aggs, es_query, query, decoders, all_selects):
         if give_me_zeros:
             # WE REQUIRE THE ZEROS FOR SORTING
             all_coord = is_sent._all_combos()  # TRACK THE EXPECTED COMBINATIONS
-            ordered_coord = all_coord.next()[::-1]
+            ordered_coord = next(all_coord)[::-1]
             output = None
             for row, coord, agg, ss in aggs_iterator(aggs, es_query, decoders):
                 if coord != ordered_coord:
@@ -107,13 +109,13 @@ def format_table(aggs, es_query, query, decoders, all_selects):
                             if output[i] is None:
                                 output[i] = s.default
                         # WE CAN GET THE SAME coord MANY TIMES, SO ONLY ADVANCE WHEN NOT
-                        ordered_coord = all_coord.next()[::-1]
+                        ordered_coord = next(all_coord)[::-1]
 
                 while coord != ordered_coord:
                     # HAPPENS WHEN THE coord IS AHEAD OF ordered_coord
                     record = [d.get_value(ordered_coord[i]) for i, d in enumerate(decoders)] + [s.default for s in all_selects]
                     yield record
-                    ordered_coord = all_coord.next()[::-1]
+                    ordered_coord = next(all_coord)[::-1]
                 # coord == missing_coord
                 output = [d.get_value(c) for c, d in zip(coord, decoders)] + [None for s in all_selects]
                 for select in ss:
@@ -184,6 +186,48 @@ def format_csv(aggs, es_query, query, decoders, select):
             yield ", ".join(map(quote, d))
 
     return data()
+
+
+def format_table_from_groupby(aggs, es_query, query, decoders, all_selects):
+    new_edges = wrap(count_dim(aggs, es_query, decoders))
+    header = tuple(new_edges.name + all_selects.name)
+    name2index = {s.name: i for i, s in enumerate(all_selects)}
+
+    def data():
+        last_coord = None   # HANG ONTO THE output FOR A BIT WHILE WE FILL THE ELEMENTS
+        coords = None
+        values = None
+        for row, coord, agg, ss in aggs_iterator(aggs, es_query, decoders):
+            if coord != last_coord:
+                if coords:
+                    # SET DEFAULTS
+                    for i, s in enumerate(all_selects):
+                        v = values[i]
+                        if v == None:
+                            values[i] = s.default
+                    yield coords + tuple(values)
+                coords = tuple(d.get_value(c) for c, d in zip(coord, decoders))
+                values = [None for _ in all_selects]
+                last_coord = coord
+            # THIS IS A TRICK!  WE WILL UPDATE A ROW THAT WAS ALREADY YIELDED
+            for select in ss:
+                v = select.pull(agg)
+                if v != None:
+                    union(values, name2index[select.name], v, select.aggregate)
+
+        if coords:
+            # SET DEFAULTS ON LAST ROW
+            for i, s in enumerate(all_selects):
+                v = values[i]
+                if v == None:
+                    values[i] = s.default
+            yield coords + tuple(values)
+
+    return Data(
+        meta={"format": "table"},
+        header=header,
+        data=list(data())
+    )
 
 
 def format_list_from_groupby(aggs, es_query, query, decoders, all_selects):
@@ -275,7 +319,7 @@ agg_formatters = {
     # EDGES FORMATTER, GROUPBY FORMATTER, VALUE_FORMATTER, mime_type
     None: (format_cube, format_table, format_cube, mimetype.JSON),
     "cube": (format_cube, format_cube, format_cube, mimetype.JSON),
-    "table": (format_table, format_table, format_table,  mimetype.JSON),
+    "table": (format_table, format_table_from_groupby, format_table,  mimetype.JSON),
     "list": (format_list, format_list_from_groupby, format_list, mimetype.JSON),
 }
 

@@ -14,9 +14,9 @@ from jx_base import Column, Table
 from jx_base.meta_columns import META_COLUMNS_NAME, META_COLUMNS_TYPE_NAME, SIMPLE_METADATA_COLUMNS, META_COLUMNS_DESC
 from jx_base.schema import Schema
 from jx_python import jx
-from mo_dots import Data, Null, is_data, is_list, unwraplist, wrap, set_default, listwrap, unwrap, split_field
+from mo_dots import Data, Null, is_data, is_list, unwraplist, wrap, listwrap, split_field
 from mo_dots.lists import last
-from mo_json import STRUCT, NESTED
+from mo_json import STRUCT, NESTED, OBJECT
 from mo_json.typed_encoder import unnest_path, untype_path, untyped, NESTED_TYPE, get_nested_path
 from mo_logs import Log
 from mo_math import MAX
@@ -118,9 +118,11 @@ class ColumnList(Table, jx_base.Container):
                         self._add(col)
 
         except Exception as e:
-            Log.warning(
-                "no {{index}} exists, making one", index=META_COLUMNS_NAME, cause=e
-            )
+            metadata = self.es_cluster.get_metadata(after=Date.now())
+            if any(index.startswith(META_COLUMNS_NAME) for index in metadata.indices.keys()):
+                Log.error("metadata already exists!", cause=e)
+
+            Log.warning("no {{index}} exists, making one", index=META_COLUMNS_NAME, cause=e)
             self._db_create()
 
     def _update_from_es(self, please_stop):
@@ -455,7 +457,14 @@ def doc_to_column(doc):
         doc = wrap(untyped(doc))
         if not doc.last_updated:
             doc.last_updated = Date.now()-YEAR
+
+        if doc.es_type == None:
+            if doc.jx_type == OBJECT:
+                doc.es_type = "object"
+            else:
+                Log.warning("{{doc}} has no es_type", doc=doc)
         doc.multi = 1001 if doc.es_type == "nested" else doc.multi
+
         doc.nested_path = tuple(listwrap(doc.nested_path))
         if last(split_field(doc.es_column)) == NESTED_TYPE and doc.es_type != "nested":
             doc.es_type = "nested"

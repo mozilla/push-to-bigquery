@@ -48,7 +48,7 @@ from mo_times import MINUTE, Timer
 from mo_times.dates import Date
 
 EXTEND_LIMIT = 2 * MINUTE  # EMIT ERROR IF ADDING RECORDS TO TABLE TOO OFTEN
-
+MAX_MERGE = 10  # MAXIMUM NUMBER OF TABLES TO MERGE AT ONCE
 SUFFIX_PATTERN = re.compile(r"__\w{20}")
 
 
@@ -372,7 +372,11 @@ class Table(Facts):
                     view_sql = current_view.view_query
                     primary_shard_name = _extract_primary_shard_name(view_sql)
                 elif SUFFIX_PATTERN.match(text(table_api_name)[len(text(api_name)) :]):
-                    shards.append(self.container.client.get_table(table))
+                    try:
+                        known_table = self.container.client.get_table(table)
+                        shards.append(known_table)
+                    except Exception as e:
+                        Log.warning("could not merge table {{table}}", table=table, cause=e)
 
         if not current_view:
             Log.error(
@@ -434,47 +438,51 @@ class Table(Facts):
             else:
                 unmatched.append((sel, shard, flake))
 
-        # EVERYTHING THAT IS IDENTICAL TO PRIMARY CAN BE MERGED IN A SINGLE QUERY
+        # EVERYTHING THAT IS IDENTICAL TO PRIMARY CAN BE MERGED WITH SIMPLE UNION ALL
         if matched:
-            command = ConcatSQL(
-                SQL_INSERT,
-                quote_column(primary_full_name),
-                JoinSQL(
-                    SQL_UNION_ALL,
-                    (
-                        sql_query(
-                            {"from": self.container.full_name + ApiName(shard.table_id)}
-                        )
-                        for _, shard, _ in matched
+            for g, merge_chunk in jx.chunk(matched, MAX_MERGE):
+                command = ConcatSQL(
+                    SQL_INSERT,
+                    quote_column(primary_full_name),
+                    JoinSQL(
+                        SQL_UNION_ALL,
+                        (
+                            sql_query(
+                                {"from": self.container.full_name + ApiName(shard.table_id)}
+                            )
+                            for _, shard, _ in merge_chunk
+                        ),
                     ),
-                ),
-            )
-            job = self.container.query_and_wait(command)
-            Log.note("job {{id}} state = {{state}}", id=job.job_id, state=job.state)
-
-            if job.errors:
-                Log.error(
-                    "\n{{sql}}\nDid not fill table:\n{{reason|json|indent}}",
-                    sql=command.sql,
-                    reason=job.errors,
                 )
-            for _, shard, _ in matched:
-                self.container.client.delete_table(shard)
+                job = self.container.query_and_wait(command)
+                Log.note("job {{id}} state = {{state}}", id=job.job_id, state=job.state)
+
+                if job.errors:
+                    Log.error(
+                        "\n{{sql}}\nDid not fill table:\n{{reason|json|indent}}",
+                        sql=command.sql,
+                        reason=job.errors,
+                    )
+                for _, shard, _ in merge_chunk:
+                    self.container.client.delete_table(shard)
 
         # ALL OTHER SCHEMAS MISMATCH
         for s, shard, _ in unmatched:
-            command = ConcatSQL(SQL_INSERT, quote_column(primary_full_name), s)
-            job = self.container.query_and_wait(command)
-            Log.note("job {{id}} state = {{state}}", id=job.job_id, state=job.state)
+            try:
+                command = ConcatSQL(SQL_INSERT, quote_column(primary_full_name), s)
+                job = self.container.query_and_wait(command)
+                Log.note("from {{shard}}, job {{id}}, state {{state}}", id=job.job_id, state=job.state)
 
-            if job.errors:
-                Log.error(
-                    "\n{{sql}}\nDid not fill table:\n{{reason|json|indent}}",
-                    sql=command.sql,
-                    reason=job.errors,
-                )
+                if job.errors:
+                    Log.error(
+                        "\n{{sql}}\nDid not fill table:\n{{reason|json|indent}}",
+                        sql=command.sql,
+                        reason=job.errors,
+                    )
 
-            self.container.client.delete_table(shard)
+                self.container.client.delete_table(shard)
+            except Exception as e:
+                Log.warning("failure to merge {{shard}}", shard=shard, cause=e)
 
         # REMOVE OLD VIEW
         view_full_name = self.container.full_name + api_name
@@ -574,7 +582,7 @@ def gen_select(total_flake, flake):
                             ),
                         ),
                         SQL_FROM,
-                        sql_call("UNNEST", [quote_column(es_path + escape_name(k))]),
+                        sql_call("UNNEST", quote_column(es_path + escape_name(k))),
                         SQL_AS,
                         SQL(row_name),
                         SQL(" WITH OFFSET AS "),
@@ -584,7 +592,7 @@ def gen_select(total_flake, flake):
                     )
                 ]
 
-            return [sql_alias(sql_call("ARRAY", inner), escape_name(k))]
+            return [sql_alias(sql_call("ARRAY", *inner), escape_name(k))]
 
         selection = []
         for k, t in jx.sort(total_flake.items(), 0):
@@ -634,7 +642,7 @@ def gen_select(total_flake, flake):
                         JoinSQL(ConcatSQL(SQL_COMMA, SQL_CR), selects),
                     )
                 ]
-                selection.append(sql_alias(sql_call("", inner), escape_name(k)))
+                selection.append(sql_alias(sql_call("", *inner), escape_name(k)))
             elif is_text(t):
                 if is_text(k_tops):
                     # THE SOURCE HAS THIS PROPERTY AS A TOP_LEVEL_FIELD

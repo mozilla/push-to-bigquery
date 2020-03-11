@@ -18,16 +18,13 @@ from collections import Mapping, namedtuple
 from jx_base import jx_expression
 from mo_dots import Data, coalesce, unwraplist, listwrap, wrap
 from mo_files import File
-from mo_future import allocate_lock as _allocate_lock, text, first, is_text, zip_longest, binary_type
+from mo_future import allocate_lock as _allocate_lock, text, first, is_text, zip_longest
 from mo_json import BOOLEAN, INTEGER, NESTED, NUMBER, OBJECT, STRING
 from mo_kwargs import override
 from mo_logs import Log
 from mo_logs.exceptions import ERROR, Except, get_stacktrace, format_trace
 from mo_logs.strings import quote
 from mo_math.stats import percentile
-from mo_threads import Lock, Queue, Thread, Till
-from mo_times import Date, Duration, Timer
-from pyLibrary import convert
 from mo_sql import (
     DB,
     SQL,
@@ -54,6 +51,9 @@ from mo_sql import (
     SQL_CP,
     SQL_DOT,
     SQL_LT, SQL_SPACE, SQL_AS, SQL_LIMIT)
+from mo_threads import Lock, Queue, Thread, Till
+from mo_times import Date, Duration, Timer
+from pyLibrary import convert
 
 DEBUG = True
 TRACE = True
