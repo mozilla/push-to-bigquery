@@ -36,7 +36,7 @@ from mo_sql import (
     SQL_LT,
 )
 
-NumberOp, OrOp, BQLScript = [None]*3
+NumberOp, OrOp, BQLScript = [None] * 3
 
 
 def check(func):

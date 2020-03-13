@@ -44,9 +44,7 @@ class SqlEqOp(SqlEqOp_):
                 elif l.sql[t] == None:
                     acc.append(ConcatSQL(r.sql[t], SQL_IS_NULL))
                 else:
-                    acc.append(
-                        ConcatSQL(sql_iso(l.sql[t]), SQL_EQ, sql_iso(r.sql[t]))
-                    )
+                    acc.append(ConcatSQL(sql_iso(l.sql[t]), SQL_EQ, sql_iso(r.sql[t])))
         if not acc:
             return FALSE.to_bq(schema)
         else:

@@ -25,7 +25,13 @@ class Variable(Variable_):
         var_name = self.var
         if var_name == GUID:
             return wrap(
-                [{"name": ".", "sql": {"s": quote_column(ApiName(GUID))}, "nested_path": ROOT_PATH}]
+                [
+                    {
+                        "name": ".",
+                        "sql": {"s": quote_column(ApiName(GUID))},
+                        "nested_path": ROOT_PATH,
+                    }
+                ]
             )
         cols = schema.leaves(var_name)
         if not cols:

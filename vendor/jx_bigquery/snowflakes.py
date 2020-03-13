@@ -1,3 +1,15 @@
+# encoding: utf-8
+#
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http:# mozilla.org/MPL/2.0/.
+#
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
+from __future__ import absolute_import, division, unicode_literals
+
+from copy import copy
 
 from google.cloud.bigquery import SchemaField
 
@@ -67,7 +79,7 @@ class Snowflake(jx_base.Snowflake):
                             "expecting {{path}} to be of type {{expected_type}} not of type {{observed_type}}",
                             path=jx_path,
                             expected_type=expected_es_type,
-                            observed_type=es_type_info
+                            observed_type=es_type_info,
                         )
                     c = jx_base.Column(
                         name=join_field(jx_path),
@@ -159,11 +171,14 @@ class Snowflake(jx_base.Snowflake):
         :param partition: SO WE KNOW WHICH FIELD MUST BE A TIMESTAMP
         :return:
         """
+
         def parse_schema(big_query_schema, jx_path, nested_path, es_path):
             output = OrderedDict()
 
             if any(ApiName(e.name) == REPEATED for e in big_query_schema):
-                big_query_schema = [e for e in big_query_schema if ApiName(e.name) == REPEATED]
+                big_query_schema = [
+                    e for e in big_query_schema if ApiName(e.name) == REPEATED
+                ]
 
             for e in big_query_schema:
                 json_type = bq_type_to_json_type[e.field_type]
@@ -192,7 +207,7 @@ class Snowflake(jx_base.Snowflake):
         # GRAB THE TOP-LEVEL FIELDS
         top_fields = [field for path, field in top_level_fields.leaves()]
         i = 0
-        while i<len(big_query_schema) and big_query_schema[i].name in top_fields:
+        while i < len(big_query_schema) and big_query_schema[i].name in top_fields:
             i = i + 1
 
         output.top_level_fields = top_level_fields
@@ -294,10 +309,22 @@ def merge(schemas, es_index, top_level_fields, partition):
         if len(schemas) == 1:
             return schemas[0]
         try:
-            return OrderedDict(
-                (k, _merge(*[ss for s in schemas for ss in [s.get(k)] if ss]))
-                for k in jx.sort(set(k for s in schemas for k in s.keys()))
-            )
+            if any(NESTED_TYPE in s for s in schemas):
+                # IF THERE ARE ANY ARRAYS, THEN THE MERGE IS AN ARRAY
+                new_schemas = []
+                for schema in schemas:
+                    if NESTED_TYPE in schema:
+                        sub_schema = schema[NESTED_TYPE]
+                        residue = {k: v for k, v in schema.items() if k != NESTED_TYPE}
+                        new_schemas.append(_merge(sub_schema, residue))
+                    else:
+                        new_schemas.append(schema)
+                return {NESTED_TYPE: _merge(*new_schemas)}
+            else:
+                return OrderedDict(
+                    (k, _merge(*(ss for s in schemas for ss in [s.get(k)] if ss)))
+                    for k in jx.sort(set(k for s in schemas for k in s.keys()))
+                )
         except Exception as e:
             e = Except.wrap(e)
             if "Expecting types to match" in e:
