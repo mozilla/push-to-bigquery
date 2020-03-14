@@ -37,7 +37,8 @@ from mo_sql import (
     SQL_INSERT,
     SQL_DESC,
     SQL_UNION_ALL,
-    SQL_STAR)
+    SQL_STAR,
+)
 from mo_threads import Till
 from mo_times import MINUTE, Timer
 from mo_times.dates import Date
@@ -58,7 +59,9 @@ from jx_bigquery.typed_encoder import (
     typed_encode,
     REPEATED,
     json_type_to_bq_type,
-    INTEGER_TYPE, untyped)
+    INTEGER_TYPE,
+    untyped,
+)
 
 DEBUG = False
 EXTEND_LIMIT = 2 * MINUTE  # EMIT ERROR IF ADDING RECORDS TO TABLE TOO OFTEN
@@ -149,7 +152,7 @@ class Dataset(Container):
                     if table_item.table_type != "VIEW":
                         Log.error("expecting {{table}} to be a view", table=api_name)
                     self.client.delete_table(table)
-                elif SUFFIX_PATTERN.match(text(table_api_name)[len(text(api_name)):]):
+                elif SUFFIX_PATTERN.match(text(table_api_name)[len(text(api_name)) :]):
                     try:
                         self.client.delete_table(table)
                     except Exception as e:
@@ -234,10 +237,14 @@ class Dataset(Container):
     def query_and_wait(self, sql):
         job = self.client.query(text(sql))
         while job.state == "RUNNING":
-            DEBUG and Log.note("job {{id}} state = {{state}}", id=job.job_id, state=job.state)
+            DEBUG and Log.note(
+                "job {{id}} state = {{state}}", id=job.job_id, state=job.state
+            )
             Till(seconds=1).wait()
             job = self.client.get_job(job.job_id)
-        DEBUG and Log.note("job {{id}} state = {{state}}", id=job.job_id, state=job.state)
+        DEBUG and Log.note(
+            "job {{id}} state = {{state}}", id=job.job_id, state=job.state
+        )
         return job
 
 
@@ -353,6 +360,7 @@ class Table(Facts):
                         if add_nested:
                             # row HAS NEW NESTED COLUMN!
                             # GO OVER THE rows AGAIN SO "RECORD" GET MAPPED TO "REPEATED"
+                            DEBUG and Log.note("New nested documnet found, retrying")
                             break
                         output.append(typed)
                     else:
@@ -533,8 +541,11 @@ class Table(Facts):
                 )
 
                 if job.errors:
-                    if all(" does not have a schema." in m for m in wrap(job.errors).message):
-                        pass  #NOTHING TO DO
+                    if all(
+                        " does not have a schema." in m
+                        for m in wrap(job.errors).message
+                    ):
+                        pass  # NOTHING TO DO
                     else:
                         Log.error(
                             "\n{{sql}}\nDid not fill table:\n{{reason|json|indent}}",
@@ -606,7 +617,9 @@ def gen_select(total_flake, flake):
     :return:
     """
 
-    def _gen_select(source_path, source_tops, source_flake, total_path, total_tops, total_flake):
+    def _gen_select(
+        source_path, source_tops, source_flake, total_path, total_tops, total_flake
+    ):
         if total_flake == source_flake and total_tops == source_tops:
             if not source_path:  # TOP LEVEL FIELDS
                 return [
@@ -618,14 +631,14 @@ def gen_select(total_flake, flake):
                 Log.error("top level fields are not expected at this point (?nested?)")
             else:
                 return [
-                    quote_column(source_path + escape_name(k)) for k in total_flake.keys()
+                    quote_column(source_path + escape_name(k))
+                    for k in total_flake.keys()
                 ]
 
         if NESTED_TYPE in total_flake:
-            k = NESTED_TYPE
             # PROMOTE EVERYTHING TO REPEATED
-            v = source_flake.get(k)
-            t = total_flake.get(k)
+            v = source_flake.get(NESTED_TYPE)
+            t = total_flake.get(NESTED_TYPE)
 
             if not v:
                 # CONVERT INNER OBJECT TO ARRAY OF ONE STRUCT
@@ -634,7 +647,14 @@ def gen_select(total_flake, flake):
                         SQL_SELECT_AS_STRUCT,
                         JoinSQL(
                             ConcatSQL(SQL_COMMA, SQL_CR),
-                            _gen_select(source_path, Null, source_flake, total_path + REPEATED, Null, t),
+                            _gen_select(
+                                source_path,
+                                Null,
+                                source_flake,
+                                total_path + REPEATED,
+                                Null,
+                                t,
+                            ),
                         ),
                     )
                 ]
@@ -646,10 +666,12 @@ def gen_select(total_flake, flake):
                         SQL_SELECT_AS_STRUCT,
                         JoinSQL(
                             ConcatSQL(SQL_COMMA, SQL_CR),
-                            _gen_select(ApiName(row_name), Null, v, ApiName(row_name), Null, t),
+                            _gen_select(
+                                ApiName(row_name), Null, v, ApiName(row_name), Null, t
+                            ),
                         ),
                         SQL_FROM,
-                        sql_call("UNNEST", quote_column(source_path + escape_name(k))),
+                        sql_call("UNNEST", quote_column(source_path + REPEATED)),
                         SQL_AS,
                         SQL(row_name),
                         SQL(" WITH OFFSET AS "),
@@ -659,7 +681,7 @@ def gen_select(total_flake, flake):
                     )
                 ]
 
-            return [sql_alias(sql_call("ARRAY", *inner), escape_name(k))]
+            return [sql_alias(sql_call("ARRAY", *inner), REPEATED)]
 
         selection = []
         for k, t in jx.sort(total_flake.items(), 0):
@@ -672,7 +694,7 @@ def gen_select(total_flake, flake):
             elif t == v and k_total_tops == k_tops:
                 selection.append(
                     ConcatSQL(
-                        quote_column(total_path + escape_name(k)),
+                        quote_column(source_path + escape_name(k)),
                         SQL_AS,
                         quote_column(escape_name(k)),
                     )
@@ -685,7 +707,7 @@ def gen_select(total_flake, flake):
                         {},
                         total_path + escape_name(k),
                         k_total_tops,
-                        t
+                        t,
                     )
                 elif is_data(v):
                     selects = _gen_select(
@@ -694,7 +716,7 @@ def gen_select(total_flake, flake):
                         v,
                         total_path + escape_name(k),
                         k_total_tops,
-                        t
+                        t,
                     )
                 else:
                     raise Log.error(
@@ -748,8 +770,14 @@ def gen_select(total_flake, flake):
                 Log.error("not expected")
         return selection
 
-    output = _gen_select(ApiName(), flake.top_level_fields, flake.schema, ApiName(), total_flake.top_level_fields,
-                         total_flake.schema)
+    output = _gen_select(
+        ApiName(),
+        flake.top_level_fields,
+        flake.schema,
+        ApiName(),
+        total_flake.top_level_fields,
+        total_flake.schema,
+    )
     tops = []
 
     for path, name in total_flake.top_level_fields.leaves():
@@ -769,4 +797,3 @@ def gen_select(total_flake, flake):
 
 DEFAULT_SCHEMA = {"_id": INTEGER}
 DEFAULT_TYPED_SCHEMA = {"_id": {INTEGER_TYPE: INTEGER}}
-

@@ -17,7 +17,6 @@
             },
             "top_level_fields": {
                 "job.id": "_job_id",
-                "last_modified": "_last_modified",
                 "action.request_time": "_request_time"
             },
             "partition": {
@@ -29,8 +28,7 @@
                 "version": "last_modified"
             },
             "cluster": [
-                "job.id",
-                "last_modified"
+                "job.id"
             ],
             "sharded": true
         }

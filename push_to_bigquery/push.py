@@ -1,10 +1,13 @@
+# encoding: utf-8
+
+from mo_http import http
+
 from jx_bigquery import bigquery
 from mo_json import json2value
 from mo_logs import startup, constants, Log, Except
 from mo_logs.strings import expand_template
 from mo_threads import Queue, Thread
 from pyLibrary.convert import zip2bytes
-from pyLibrary.env import http
 
 
 def push(config):
@@ -12,8 +15,8 @@ def push(config):
     index = container.get_or_create_table(config.destination)
 
     base_url = "https://active-data-treeherder-normalized.s3-us-west-2.amazonaws.com/{{major}}.{{minor}}.json.gz"
-    major = 1791
-    minor = 39
+    major = 1896
+    minor = 287
 
     NUM_THREADS = 1
     queue = Queue("data", max=NUM_THREADS)
@@ -51,6 +54,8 @@ def push(config):
         except Exception as e:
             e = Except.wrap(e)
             if "Not a gzipped file" in e:
+                if minor == 0:
+                    break  # done
                 minor = 0
                 major += 1
                 continue

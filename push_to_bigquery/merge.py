@@ -1,3 +1,4 @@
+# encoding: utf-8
 from jx_bigquery import bigquery
 from mo_logs import startup, constants, Log
 
